@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.0)
 project(Glad)
 
+set(CMAKE_CXX_STANDARD 17)
+
 add_library(
     glad
     glad.h

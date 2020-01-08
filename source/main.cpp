@@ -4,6 +4,14 @@
 
 #include <iostream>
 
+#include <stdlib.h>
+
+#include "types.hpp"
+
+#include "list.hpp"
+
+#include <vector>
+
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
 
@@ -28,6 +36,21 @@ const char *fragmentShaderSource =
 
 int main()
 {
+    auto list = List<i32>();
+    list.push(4);
+    list.push(2);
+    list[1] = 5;
+    i32 num = list[1];
+    // std::cout << num << std::endl;
+
+    auto newList = list.map([](i32 num) -> i64 {
+        return (i64)(num + 2);
+    });
+
+    list.each([](i32 num) {
+        std::cout << num << std::endl;
+    });
+
     // glfw: initialize and configure
     // ------------------------------
     glfwInit();
