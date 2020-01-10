@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <algorithm>
+#include <type_traits>
 
 #include "types.hpp"
 
@@ -25,7 +26,7 @@ struct List
 
     ~List()
     {
-        free(buffer);
+        // free(buffer);
     }
 
     T& operator[](u32 index)
@@ -74,23 +75,28 @@ struct List
         buffer = newBuffer;
     }
 
-    void each(void(func)(T))
+    void each(void(function)(T))
     {
         for (u32 index = 0; index < size; index += 1)
         {
-            func(((T*)buffer)[index]);
+            function(((T*)buffer)[index]);
         }
     }
 
-    template <typename F>
-    List<F> map(F(func)(T))
+    template <typename F, typename R = std::invoke_result_t<F, T>>
+    List<R> map(F functor)
     {
-        auto list = List<F>();
-        list.size = size;
+        List<R> list;
+        // list.resize(size);
         for (u32 index = 0; index < size; index += 1)
         {
-            list[index] = func(((T*)buffer)[index]);
+            list.push(functor(((T*)buffer)[index]));
         }
         return list;
+    }
+
+    template <typename F, typename R = std::invoke_result_t<F, T const&>>
+    R reduce(F function)
+    {
     }
 };

@@ -12,6 +12,8 @@
 
 #include <vector>
 
+#include "math.hpp"
+
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
 
@@ -34,22 +36,29 @@ const char *fragmentShaderSource =
     "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
     "}\n\0";
 
-int main()
+i64 addTwo(i32 n)
 {
-    auto list = List<i32>();
+    return (i64)(n + 2);
+}
+
+i32 main()
+{
+    List<i32> list;
     list.push(4);
     list.push(2);
-    list[1] = 5;
-    i32 num = list[1];
-    // std::cout << num << std::endl;
 
-    auto newList = list.map([](i32 num) -> i64 {
-        return (i64)(num + 2);
+    auto list1 = list.map(addTwo);
+    auto list2 = list.map([](auto n) {
+        return n + 4;
     });
 
-    list.each([](i32 num) {
-        std::cout << num << std::endl;
+    list2.each([](auto n) {
+        std::cout << n << std::endl;
     });
+
+    // V2<i32> v;
+    // v.x = 1;
+    // v.y = 2;
 
     // glfw: initialize and configure
     // ------------------------------
