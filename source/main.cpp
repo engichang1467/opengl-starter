@@ -41,6 +41,8 @@ i64 addTwo(i32 n)
     return (i64)(n + 2);
 }
 
+#define OUT(a) std::cout << a << std::endl;
+
 i32 main()
 {
     List<i32> list;
@@ -52,13 +54,15 @@ i32 main()
         return n + 4;
     });
 
-    list2.each([](auto n) {
-        std::cout << n << std::endl;
-    });
+    // list2.each([](auto n) {
+    //     std::cout << n << std::endl;
+    // });
 
-    // V2<i32> v;
-    // v.x = 1;
-    // v.y = 2;
+    auto v1 = V2(1, 2);
+    V2   v2 = {3, 4};
+    // v2.x = 3;
+    // v2.y = 4;
+    OUT(dot(v2, v1));
 
     // glfw: initialize and configure
     // ------------------------------
