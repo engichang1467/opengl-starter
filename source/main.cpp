@@ -58,11 +58,35 @@ i32 main()
     //     std::cout << n << std::endl;
     // });
 
-    auto v1 = V2(1, 2);
-    V2   v2 = {3, 4};
-    // v2.x = 3;
-    // v2.y = 4;
-    OUT(dot(v2, v1));
+    V2 v2_a = {3, 4};
+    V2 v2_b = {2, 3};
+    // OUT(v2_a * v2_b);
+
+    V2 v2_c = v2_a + v2_b;
+    // v2_c.out();
+
+    V3 v3_a = {3, 4, 5};
+    V3 v3_b = {2, 3, 4};
+    // OUT(v3_a * v3_b);
+
+    V3 v3_c = cross(v3_a, v3_b);
+    // OUT(v3_c.x);
+    // OUT(v3_c.y);
+    // OUT(v3_c.z);
+
+    V4 v4_a = {3, 4, 5, 6};
+    V4 v4_b = {2, 3, 4, 5};
+    // OUT(v4_a * v4_b);
+
+    M2<i32> m2_a = {
+        {1, 2},
+        {3, 4}};
+    M2<i32> m2_b = {
+        {2, 3},
+        {4, 5}};
+
+    (v2_a * m2_a).out();
+    (m2_a * m2_b).out();
 
     // glfw: initialize and configure
     // ------------------------------
