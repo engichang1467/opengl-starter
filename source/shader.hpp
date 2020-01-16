@@ -15,7 +15,7 @@
 
 struct Shader
 {
-    u32 ID;
+    U32 ID;
     // constructor generates the shader on the fly
     // ------------------------------------------------------------------------
     Shader(const char *vertexPath, const char *fragmentPath, const char *geometryPath = nullptr)
@@ -63,7 +63,7 @@ struct Shader
         const char *vShaderCode = vertexCode.c_str();
         const char *fShaderCode = fragmentCode.c_str();
         // 2. compile shaders
-        u32 vertex, fragment;
+        U32 vertex, fragment;
         // vertex shader
         vertex = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertex, 1, &vShaderCode, NULL);
@@ -75,7 +75,7 @@ struct Shader
         glCompileShader(fragment);
         checkCompileErrors(fragment, "FRAGMENT");
         // if geometry shader is given, compile geometry shader
-        u32 geometry;
+        U32 geometry;
         if (geometryPath != nullptr)
         {
             const char *gShaderCode = geometryCode.c_str();
