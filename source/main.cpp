@@ -3,55 +3,19 @@
 #include <glad.h>
 
 #include <GLFW/glfw3.h>
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 #include "math.hpp"
-
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-
 #include "shader.hpp"
 
 #include <iostream>
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void mouse_callback(GLFWwindow* window, double xpos, double ypos);
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void framebufferSizeCallback(GLFWwindow* window, I32 width, I32 height);
+void mouseCallback(GLFWwindow* window, F64 xpos, F64 ypos);
+void scrollCallback(GLFWwindow* window, F64 xoffset, F64 yoffset);
 void processInput(GLFWwindow* window);
-
-void out(F32 n)
-{
-    std::cout << "OUT: " << n << std::endl;
-}
-void out(const char** s)
-{
-    std::cout << "OUT: " << s << std::endl;
-}
-void out(glm::vec3 v)
-{
-    std::cout << "OUT: "
-              << "[" << v.x << ", " << v.y << ", " << v.z << "]" << std::endl;
-}
-void out(glm::vec4 v)
-{
-    std::cout << "OUT: "
-              << "[" << v.x << ", " << v.y << ", " << v.z << ", " << v.w << "]" << std::endl;
-}
-void out(glm::mat3 m)
-{
-    out(m[0]);
-    out(m[1]);
-    out(m[2]);
-}
-void out(glm::mat4 m)
-{
-    out(m[0]);
-    out(m[1]);
-    out(m[2]);
-    out(m[3]);
-}
 
 #include "camera.hpp"
 
@@ -81,76 +45,17 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
 // camera
-Camera camera = Camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Camera camera = Camera(V3(0.0f, 0.0f, 3.0f));
 float  lastX = SCR_WIDTH / 2.0f;
 float  lastY = SCR_HEIGHT / 2.0f;
 bool   firstMouse = true;
 
 // timing
 float deltaTime = 0.0f;  // time between current frame and last frame
-float lastFrame = 0.0f;
+float lastTime = 0.0f;
 
 int main()
 {
-    glm::vec3 glm_v3_a = {1, 2, 3};
-    V3_T      v3_a = {1, 2, 3};
-
-    glm::vec3 glm_v3_b = {5, 4, 3};
-    V3_T      v3_b = {5, 4, 3};
-
-    std::cout << "OUT: vec * vec" << std::endl;
-    std::cout << "OUT: glm" << std::endl;
-    out(glm_v3_a * glm_v3_b);
-    std::cout << "OUT: m" << std::endl;
-    out(v3_a * v3_b);
-
-    glm::vec4 glm_v4_a = {1, 2, 3, 4};
-    V4_T      v4_a = {1, 2, 3, 4};
-
-    glm::vec4 glm_v4_b = {5, 4, 3, 2};
-    V4_T      v4_b = {5, 4, 3, 2};
-
-    std::cout << "OUT: vec * vec" << std::endl;
-    std::cout << "OUT: glm" << std::endl;
-    out(glm_v4_a * glm_v4_b);
-    std::cout << "OUT: m" << std::endl;
-    out(v4_a * v4_b);
-
-    glm::mat3 glm_m3_a = {
-        {1, 2, 3},
-        {4, 5, 6},
-        {7, 8, 9}};
-    M3_T m3_a = {
-        V3_T(1, 2, 3),
-        V3_T(4, 5, 6),
-        V3_T(7, 8, 9)};
-
-    glm::mat3 glm_m3_b = {
-        {9, 2, 3},
-        {2, 3, 4},
-        {3, 4, 5}};
-    M3_T m3_b = {
-        V3_T(9, 2, 3),
-        V3_T(2, 3, 4),
-        V3_T(3, 4, 5)};
-
-    std::cout << "OUT: vec * mat" << std::endl;
-    out(glm_v3_a * glm_m3_b);
-    std::cout << "OUT: m" << std::endl;
-    out(v3_a * m3_b);
-
-    std::cout << "OUT: mat * mat" << std::endl;
-    std::cout << "OUT: glm" << std::endl;
-    out(glm_m3_a * glm_m3_b);
-    std::cout << "OUT: m" << std::endl;
-    out(m3_a * m3_b);
-
-    std::cout << "OUT: lookAt" << std::endl;
-    std::cout << "OUT: glm" << std::endl;
-    out(glm::lookAt(glm::vec3(1.0f, 2.0f, 3.0f), glm::vec3(3.0f, 2.0f, 1.0f), glm::vec3(0.5f, 1.0f, 0.2f)));
-    std::cout << "OUT: m" << std::endl;
-    out(lookAt(V3_T<F32>(1, 2, 3), V3_T<F32>(3, 2, 1), V3_T<F32>(0.5, 1.0, 0.2)));
-
     // glfw: initialize and configure
     // ------------------------------
     glfwInit();
@@ -172,9 +77,9 @@ int main()
         return -1;
     }
     glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
+    glfwSetCursorPosCallback(window, mouseCallback);
+    glfwSetScrollCallback(window, scrollCallback);
 
     // tell GLFW to capture our mouse
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -240,18 +145,18 @@ int main()
         -0.5f, 0.5f, 0.5f, 0.0f, 0.0f,
         -0.5f, 0.5f, -0.5f, 0.0f, 1.0f};
     // world space positions of our cubes
-    glm::vec3 cubePositions[] = {
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(2.0f, 5.0f, -15.0f),
-        glm::vec3(-1.5f, -2.2f, -2.5f),
-        glm::vec3(-3.8f, -2.0f, -12.3f),
-        glm::vec3(2.4f, -0.4f, -3.5f),
-        glm::vec3(-1.7f, 3.0f, -7.5f),
-        glm::vec3(1.3f, -2.0f, -2.5f),
-        glm::vec3(1.5f, 2.0f, -2.5f),
-        glm::vec3(1.5f, 0.2f, -1.5f),
-        glm::vec3(-1.3f, 1.0f, -1.5f)};
-    unsigned int VBO, VAO;
+    V3 cubePositions[] = {
+        V3(0.0f, 0.0f, 0.0f),
+        V3(2.0f, 5.0f, -15.0f),
+        V3(-1.5f, -2.2f, -2.5f),
+        V3(-3.8f, -2.0f, -12.3f),
+        V3(2.4f, -0.4f, -3.5f),
+        V3(-1.7f, 3.0f, -7.5f),
+        V3(1.3f, -2.0f, -2.5f),
+        V3(1.5f, 2.0f, -2.5f),
+        V3(1.5f, 0.2f, -1.5f),
+        V3(-1.3f, 1.0f, -1.5f)};
+    U32 VBO, VAO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
 
@@ -261,15 +166,15 @@ int main()
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     // position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(F32), (void*)0);
     glEnableVertexAttribArray(0);
     // texture coord attribute
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(F32), (void*)(3 * sizeof(F32)));
     glEnableVertexAttribArray(1);
 
     // load and create a texture
     // -------------------------
-    unsigned int texture1, texture2;
+    U32 texture1, texture2;
     // texture 1
     // ---------
     glGenTextures(1, &texture1);
@@ -281,9 +186,9 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     // load image, create texture and generate mipmaps
-    int width, height, nrChannels;
+    I32 width, height, nrChannels;
     stbi_set_flip_vertically_on_load(true);  // tell stb_image.h to flip loaded texture's on the y-axis.
-    unsigned char* data = stbi_load("assets/container.jpg", &width, &height, &nrChannels, 0);
+    U8* data = stbi_load("assets/container.jpg", &width, &height, &nrChannels, 0);
     if (data)
     {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
@@ -321,8 +226,8 @@ int main()
     // tell opengl for each sampler to which texture unit it belongs to (only has to be done once)
     // -------------------------------------------------------------------------------------------
     shader.use();
-    shader.setInt("texture1", 0);
-    shader.setInt("texture2", 1);
+    shader.set("texture1", 0);
+    shader.set("texture2", 1);
 
     // render loop
     // -----------
@@ -331,8 +236,8 @@ int main()
         // per-frame time logic
         // --------------------
         float currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
+        deltaTime = currentFrame - lastTime;
+        lastTime = currentFrame;
 
         // input
         // -----
@@ -353,24 +258,23 @@ int main()
         shader.use();
 
         // pass projection matrix to shader (note that in this case it could change every frame)
-        glm::mat4 projection = toGLM(perspective(radians(camera.zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f));
+        M4 projection = perspective(radians(camera.zoom), (F32)SCR_WIDTH / (F32)SCR_HEIGHT, 0.1f, 100.0f);
 
-        shader.setMat4("projection", projection);
+        shader.set("projection", projection);
 
         // camera/view transformation
-        glm::mat4 view = toGLM(camera.GetViewMatrix());
-        shader.setMat4("view", view);
+        M4 view = camera.getViewMatrix();
+        shader.set("view", view);
 
         // render boxes
         glBindVertexArray(VAO);
-        for (unsigned int i = 0; i < 10; i++)
+        for (U32 i = 0; i < 10; i++)
         {
             // calculate the model matrix for each object and pass it to shader before drawing
-            glm::mat4 model = glm::mat4(1.0f);  // make sure to initialize matrix to identity matrix first
-            model = glm::translate(model, cubePositions[i]);
-            float angle = 20.0f * i;
-            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-            shader.setMat4("model", model);
+            M4  model = translate(M4(1.0f), cubePositions[i]);
+            F32 angle = 20.0f * i;
+            model = model * rotation(radians(angle), V3(1.0f, 0.3f, 0.5f));
+            shader.set("model", model);
 
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
@@ -400,27 +304,25 @@ void processInput(GLFWwindow* window)
         glfwSetWindowShouldClose(window, true);
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera.ProcessKeyboard(FORWARD, deltaTime);
+        camera.processKeyboard(FORWARD, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera.ProcessKeyboard(BACKWARD, deltaTime);
+        camera.processKeyboard(BACKWARD, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera.ProcessKeyboard(LEFT, deltaTime);
+        camera.processKeyboard(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera.ProcessKeyboard(RIGHT, deltaTime);
+        camera.processKeyboard(RIGHT, deltaTime);
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
 // ---------------------------------------------------------------------------------------------
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+void framebufferSizeCallback(GLFWwindow* window, I32 width, I32 height)
 {
     // make sure the viewport matches the new window dimensions; note that width and
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
 }
 
-// glfw: whenever the mouse moves, this callback is called
-// -------------------------------------------------------
-void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+void mouseCallback(GLFWwindow* window, F64 xpos, F64 ypos)
 {
     if (firstMouse)
     {
@@ -429,18 +331,16 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
         firstMouse = false;
     }
 
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos;  // reversed since y-coordinates go from bottom to top
+    F64 xoffset = xpos - lastX;
+    F64 yoffset = lastY - ypos;  // reversed since y-coordinates go from bottom to top
 
     lastX = xpos;
     lastY = ypos;
 
-    camera.ProcessMouseMovement(xoffset, yoffset);
+    camera.processMouseMovement(xoffset, yoffset);
 }
 
-// glfw: whenever the mouse scroll wheel scrolls, this callback is called
-// ----------------------------------------------------------------------
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+void scrollCallback(GLFWwindow* window, F64 xoffset, F64 yoffset)
 {
-    camera.ProcessMouseScroll(yoffset);
+    camera.processMouseScroll(yoffset);
 }

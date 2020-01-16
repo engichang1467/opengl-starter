@@ -19,9 +19,10 @@ struct M4_T;
 // Scalar
 #define PI 3.14159265359f;
 
-F32 radians(F32 degrees)
+template <typename T>
+F radians(T degrees)
 {
-    return degrees * 3.14159265359f / 180.0f;
+    return (F)degrees * 3.14159265359f / 180.0f;
 }
 
 // Vector 2
@@ -67,6 +68,11 @@ struct V2_T
     V2_T<T> operator/(T n)
     {
         return V2_T<T>(x / n, y / n);
+    }
+
+    T* front()
+    {
+        return &x;
     }
 };
 
@@ -140,6 +146,11 @@ struct V3_T
     V3_T<T> operator/(T n)
     {
         return V3_T<T>(x / n, y / n, z / n);
+    }
+
+    T* front()
+    {
+        return &x;
     }
 };
 
@@ -223,6 +234,11 @@ struct V4_T
     {
         return V4_T<T>(x / n, y / n, z / n, w / n);
     }
+
+    T* front()
+    {
+        return &x;
+    }
 };
 
 template <typename T>
@@ -258,12 +274,17 @@ struct M2_T
     V2_T<T> y;
 
     M2_T(){};
-    M2_T(T n) : x(V2_T(n, 0)), y(V2_T(0, n)){};
+    M2_T(T n) : x(V2_T<T>(n, 0)), y(V2_T<T>(0, n)){};
     M2_T(V2_T<T> x, V2_T<T> y) : x(x), y(y){};
 
     M2_T<T> operator*(M2_T<T> m)
     {
         return M2_T<T>(m.x * (*this), m.y * (*this));
+    }
+
+    T* front()
+    {
+        return &x.x;
     }
 };
 
@@ -291,12 +312,17 @@ struct M3_T
     V3_T<T> z;
 
     M3_T(){};
-    M3_T(T n) : x(V3_T(n, 0, 0)), y(V3_T(0, n, 0)), z(V3_T(0, 0, n)){};
+    M3_T(T n) : x(V3_T<T>(n, 0, 0)), y(V3_T<T>(0, n, 0)), z(V3_T<T>(0, 0, n)){};
     M3_T(V3_T<T> x, V3_T<T> y, V3_T<T> z) : x(x), y(y), z(z){};
 
     M3_T<T> operator*(M3_T<T> m)
     {
         return M3_T<T>(m.x * (*this), m.y * (*this), m.z * (*this));
+    }
+
+    T* front()
+    {
+        return &x.x;
     }
 };
 
@@ -327,12 +353,17 @@ struct M4_T
     V4_T<T> w;
 
     M4_T(){};
-    M4_T(T n) : x(V4_T(n, 0, 0, 0)), y(V4_T(0, n, 0, 0)), z(V4_T(0, 0, n, 0)), w(V4_T(0, 0, 0, n)){};
+    M4_T(T n) : x(V4_T<T>(n, 0, 0, 0)), y(V4_T<T>(0, n, 0, 0)), z(V4_T<T>(0, 0, n, 0)), w(V4_T<T>(0, 0, 0, n)){};
     M4_T(V4_T<T> x, V4_T<T> y, V4_T<T> z, V4_T<T> w) : x(x), y(y), z(z), w(w){};
 
     M4_T<T> operator*(M4_T<T> m)
     {
         return M4_T<T>(m.x * (*this), m.y * (*this), m.z * (*this), m.w * (*this));
+    }
+
+    T* front()
+    {
+        return &x.x;
     }
 };
 
@@ -355,7 +386,16 @@ M4_T<T> transpose(M4_T<T> m)
         V4_T<T>(m.x.w, m.y.w, m.z.w, m.w.w));
 }
 
-// Graphics Functions
+template <typename T>
+M4_T<T> translate(M4_T<T> m, V3_T<T> v)
+{
+    return M4_T<T>(
+        m.x,
+        m.y,
+        m.z,
+        V4_T<T>(v, 1) * m);
+}
+
 M4_T<F> lookAt(V3_T<F> position, V3_T<F> at, V3_T<F> up)
 {
     V3_T<F> zaxis = normalize(at - position);
@@ -392,6 +432,20 @@ M4_T<F> perspective(F fovy, F aspect, F zNear, F zFar)
     m.z.w = -1.0f;
     m.w.z = (-2.0f * zFar * zNear) / (zFar - zNear);
     return m;
+}
+
+M4_T<F> rotation(F theta, V3_T<F> v)
+{
+    v = normalize(v);
+
+    // clang-format off
+    return M4_T<F>(
+        V4_T<F>(      cos(theta) + (1 - cos(theta)) * v.x * v.x, (1 - cos(theta)) * v.x * v.y + v.z * sin(theta), (1 - cos(theta)) * v.x * v.z - v.y * sin(theta), 0),
+        V4_T<F>((1 - cos(theta)) * v.x * v.y - v.z * sin(theta),       cos(theta) + (1 - cos(theta)) * v.y * v.y, (1 - cos(theta)) * v.y * v.z + v.x * sin(theta), 0),
+        V4_T<F>((1 - cos(theta)) * v.x * v.z + v.y * sin(theta), (1 - cos(theta)) * v.y * v.z - v.x * sin(theta),       cos(theta) + (1 - cos(theta)) * v.z * v.z, 0),
+        V4_T<F>(                                              0,                                               0,                                               0, 1)
+    );
+    // clang-format on
 }
 
 // template <typename T, qualifier Q>
