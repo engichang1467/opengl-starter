@@ -448,48 +448,40 @@ M4_T<F> rotation(F theta, V3_T<F> v)
     // clang-format on
 }
 
-// template <typename T, qualifier Q>
-// GLM_FUNC_QUALIFIER mat<4, 4, T, Q> lookAtRH(vec<3, T, Q> const& eye, vec<3, T, Q> const& center, vec<3, T, Q> const& up)
-// {
-//     vec<3, T, Q> const f(normalize(center - eye));
-//     vec<3, T, Q> const s(normalize(cross(f, up)));
-//     vec<3, T, Q> const u(cross(s, f));
+M4_T<F> rotationX(F theta)
+{
+    // clang-format off
+    return M4_T<F>(
+        V4_T<F>(1,           0,          0, 0),
+        V4_T<F>(0,  cos(theta), sin(theta), 0),
+        V4_T<F>(0, -sin(theta), cos(theta), 0),
+        V4_T<F>(0,           0,          0, 1)
+    );
+    // clang-format on
+}
 
-//     mat<4, 4, T, Q> Result(1);
-//     Result.x.x = s.x;
-//     Result.y.x = s.y;
-//     Result.z.x = s.z;
-//     Result.x.y = u.x;
-//     Result.y.y = u.y;
-//     Result.z.y = u.z;
-//     Result.x.z = -f.x;
-//     Result.y.z = -f.y;
-//     Result.z.z = -f.z;
-//     Result.w.x = -dot(s, eye);
-//     Result.w.y = -dot(u, eye);
-//     Result.w.z = dot(f, eye);
-//     return Result;
-// }
+M4_T<F> rotationY(F theta)
+{
+    // clang-format off
+    return M4_T<F>(
+        V4_T<F>(cos(theta), 0, -sin(theta), 0),
+        V4_T<F>(         0, 1,           0, 0),
+        V4_T<F>(sin(theta), 0,  cos(theta), 0),
+        V4_T<F>(         0, 0,           0, 1)
+    );
+    // clang-format on
+}
 
-//  M4_T lookAt( V3_T position,  V3_T target,  V3_T up)
-// {
-//     // 1. Position = known
-//     // 2. Calculate cameraDirection
-//      V3_T zaxis = normalize(position - target);
-//     // 3. Get positive right axis vector
-//      V3_T xaxis = cross(normalize(up), zaxis);
-//     // 4. Calculate camera up vector
-//      V3_T yaxis = cross(zaxis, xaxis);
-
-//      M4_T view = {
-//          V4_T(xaxis, 0),
-//          V4_T(yaxis, 0),
-//          V4_T(zaxis, 0),
-//          V4_T(position, 1),
-//     };
-
-//     return view;
-// }
+M4_T<F> rotationZ(F theta)
+{
+    // clang-format off
+    return M4_T<F>(
+        V4_T<F>( cos(theta), sin(theta), 0, 0),
+        V4_T<F>(-sin(theta), cos(theta), 0, 0),
+        V4_T<F>(          0,          0, 1, 0),
+        V4_T<F>(          0,          0, 0, 1));
+    // clang-format on
+}
 
 typedef V2_T<F> V2;
 typedef V3_T<F> V3;

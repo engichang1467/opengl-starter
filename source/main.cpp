@@ -144,7 +144,7 @@ int main()
         0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
         -0.5f, 0.5f, 0.5f, 0.0f, 0.0f,
         -0.5f, 0.5f, -0.5f, 0.0f, 1.0f};
-    // world space positions of our cubes
+
     V3 cubePositions[] = {
         V3(0.0f, 0.0f, 0.0f),
         V3(2.0f, 5.0f, -15.0f),
@@ -156,6 +156,7 @@ int main()
         V3(1.5f, 2.0f, -2.5f),
         V3(1.5f, 0.2f, -1.5f),
         V3(-1.3f, 1.0f, -1.5f)};
+
     U32 VBO, VAO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
