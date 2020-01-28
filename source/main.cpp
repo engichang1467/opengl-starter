@@ -1,16 +1,25 @@
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+// #define TINYOBJLOADER_IMPLEMENTATION
+// #include "tiny_obj_loader.h"
+
 #include "types.hpp"
 
 #include <glad.h>
 
 #include <GLFW/glfw3.h>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
 #include "math.hpp"
 #include "shader.hpp"
 
 #include <iostream>
+
+#include <vector>
+
+#include <glm/glm.hpp>
+
+#include "mesh.hpp"
 
 void framebufferSizeCallback(GLFWwindow* window, I32 width, I32 height);
 void mouseCallback(GLFWwindow* window, F64 xpos, F64 ypos);
@@ -19,30 +28,9 @@ void processInput(GLFWwindow* window);
 
 #include "camera.hpp"
 
-template <typename T>
-glm::vec2 toGLM(V2_T<T> v)
-{
-    return glm::vec2(v.x, v.y);
-}
-template <typename T>
-glm::vec3 toGLM(V3_T<T> v)
-{
-    return glm::vec3(v.x, v.y, v.z);
-}
-template <typename T>
-glm::vec4 toGLM(V4_T<T> v)
-{
-    return glm::vec4(v.x, v.y, v.z, v.w);
-}
-template <typename T>
-glm::mat4 toGLM(M4_T<T> m)
-{
-    return glm::mat4(toGLM(m.x), toGLM(m.y), toGLM(m.z), toGLM(m.w));
-}
-
 // settings
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+const int SCR_WIDTH = 800;
+const int SCR_HEIGHT = 600;
 
 // camera
 Camera camera = Camera(V3(0.0f, 0.0f, 3.0f));
@@ -54,11 +42,18 @@ bool   firstMouse = true;
 float deltaTime = 0.0f;  // time between current frame and last frame
 float lastTime = 0.0f;
 
+#define OUT(x) std::cout << x << std::endl;
+
 int main()
 {
+    // load model
+
     // glfw: initialize and configure
     // ------------------------------
-    glfwInit();
+    if (!glfwInit())
+    {
+        OUT("fuck");
+    }
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -69,10 +64,12 @@ int main()
 
     // glfw window creation
     // --------------------
+    OUT(SCR_HEIGHT);
+    OUT(SCR_WIDTH);
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
     if (window == NULL)
     {
-        std::cout << "Failed to create GLFW window" << std::endl;
+        OUT("Failed to create GLFW window, fuck!");
         glfwTerminate();
         return -1;
     }
@@ -102,49 +99,63 @@ int main()
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
-    float vertices[] = {
+    // clang-format off
+    F32 cube[] = {
         -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 1.0f, 0.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f, 1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f, 1.0f, 1.0f,
+         0.5f,  0.5f, -0.5f, 1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f, 0.0f, 1.0f,
         -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
-
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
-        -0.5f, 0.5f, 0.5f, 0.0f, 1.0f,
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-
-        -0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f, 0.0f, 0.0f,
+         0.5f, -0.5f,  0.5f, 1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f, 1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f, 1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f, 0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f, 0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f, 1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f, 1.0f, 1.0f,
         -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
         -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-        0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-        0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-        0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-
+        -0.5f, -0.5f,  0.5f, 0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f, 1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f, 1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f, 1.0f, 1.0f,
+         0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f, 0.0f, 0.0f,
+         0.5f,  0.5f,  0.5f, 1.0f, 0.0f,
         -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-        0.5f, -0.5f, -0.5f, 1.0f, 1.0f,
-        0.5f, -0.5f, 0.5f, 1.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 1.0f, 0.0f,
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f, 1.0f, 1.0f,
+         0.5f, -0.5f,  0.5f, 1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f, 1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f, 0.0f, 0.0f,
         -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f, 0.0f, 1.0f,
+         0.5f,  0.5f, -0.5f, 1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f, 1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f, 1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f, 0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f, 0.0f, 1.0f
+    };
+    // clang-format on
 
-        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f, 0.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f};
+    std::vector<Vertex> vertices;
+    std::vector<U32>    indices;
+    for (U32 i = 0; i < sizeof(cube) / sizeof(F32); i += 5)
+    {
+        Vertex vertex;
+        vertex.position = V3(cube[i], cube[i + 1], cube[i + 2]);
+        vertex.normal = cross(vertex.position, V3(cube[i], cube[i + 2], cube[i + 1]));
+        vertex.texCoord = V2(cube[i + 3], cube[i + 4]);
 
+        vertices.push_back(vertex);
+        indices.push_back(i / 5);
+    }
+
+    Mesh mesh = Mesh(vertices, indices);
+
+    // clang-format off
     V3 cubePositions[] = {
         V3(0.0f, 0.0f, 0.0f),
         V3(2.0f, 5.0f, -15.0f),
@@ -156,26 +167,11 @@ int main()
         V3(1.5f, 2.0f, -2.5f),
         V3(1.5f, 0.2f, -1.5f),
         V3(-1.3f, 1.0f, -1.5f)};
-
-    U32 VBO, VAO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    // position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(F32), (void*)0);
-    glEnableVertexAttribArray(0);
-    // texture coord attribute
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(F32), (void*)(3 * sizeof(F32)));
-    glEnableVertexAttribArray(1);
+    // clang-format on
 
     // load and create a texture
     // -------------------------
-    U32 texture1, texture2;
+    U32 texture1;
     // texture 1
     // ---------
     glGenTextures(1, &texture1);
@@ -187,35 +183,12 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     // load image, create texture and generate mipmaps
-    I32 width, height, nrChannels;
+    I32 width, height, channels;
     stbi_set_flip_vertically_on_load(true);  // tell stb_image.h to flip loaded texture's on the y-axis.
-    U8* data = stbi_load("assets/container.jpg", &width, &height, &nrChannels, 0);
+    U8* data = stbi_load("assets/container.jpg", &width, &height, &channels, 0);
     if (data)
     {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else
-    {
-        std::cout << "Failed to load texture" << std::endl;
-    }
-    stbi_image_free(data);
-    // texture 2
-    // ---------
-    glGenTextures(1, &texture2);
-    glBindTexture(GL_TEXTURE_2D, texture2);
-    // set the texture wrapping parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    // set texture filtering parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // load image, create texture and generate mipmaps
-    data = stbi_load("assets/awesomeface.png", &width, &height, &nrChannels, 0);
-    if (data)
-    {
-        // note that the awesomeface.png has transparency and thus an alpha channel, so make sure to tell OpenGL the data type is of GL_RGBA
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
     }
     else
@@ -228,7 +201,6 @@ int main()
     // -------------------------------------------------------------------------------------------
     shader.use();
     shader.set("texture1", 0);
-    shader.set("texture2", 1);
 
     // render loop
     // -----------
@@ -252,8 +224,6 @@ int main()
         // bind textures on corresponding texture units
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture1);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, texture2);
 
         // activate shader
         shader.use();
@@ -268,17 +238,7 @@ int main()
         shader.set("view", view);
 
         // render boxes
-        glBindVertexArray(VAO);
-        for (U32 i = 0; i < 10; i++)
-        {
-            // calculate the model matrix for each object and pass it to shader before drawing
-            M4  model = translate(M4(1.0f), cubePositions[i]);
-            F32 angle = 20.0f * i;
-            model = model * rotation(radians(angle), V3(1.0f, 0.3f, 0.5f));
-            shader.set("model", model);
-
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-        }
+        mesh.draw();
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -288,8 +248,6 @@ int main()
 
     // optional: de-allocate all resources once they've outlived their purpose:
     // ------------------------------------------------------------------------
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------

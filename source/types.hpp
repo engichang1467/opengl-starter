@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <string.h>
 
 typedef int8_t  I8;
 typedef int16_t I16;
@@ -16,3 +17,5 @@ typedef float  F32;
 typedef double F64;
 
 typedef bool B;
+
+// typedef std::string String;
