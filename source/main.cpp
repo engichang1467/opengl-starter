@@ -96,6 +96,7 @@ int main()
     // build and compile our shader zprogram
     // ------------------------------------
     Shader shader("shaders/shader.vert", "shaders/shader.frag");
+    shader.use();
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------

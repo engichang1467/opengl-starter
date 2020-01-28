@@ -39,6 +39,16 @@ struct Mesh
         this->vertices = vertices;
         this->indices = indices;
 
+        for (int i = 0; i < this->vertices.size(); i += 1)
+        {
+            std::cout << "v: " << this->vertices[i].position.x << ", " << this->vertices[i].position.y << ", " << this->vertices[i].position.z << std::endl;
+        }
+
+        for (int i = 0; i < this->indices.size(); i += 1)
+        {
+            std::cout << "i: " << this->indices[i] << std::endl;
+        }
+
         setup();
     }
 
