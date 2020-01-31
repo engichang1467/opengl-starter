@@ -5,8 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 
 add_library(
     glad
-    glad.h
-    glad.c
+    glad/glad.h
+    glad/glad.c
 )
 
 target_include_directories(
