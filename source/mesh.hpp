@@ -1,5 +1,6 @@
 #pragma once
 
+#include "entity.hpp"
 #include "math.hpp"
 #include "types.hpp"
 
@@ -22,11 +23,12 @@
 struct Vertex
 {
     V3 position;
+    V3 barycentric;
     V3 normal;
     V3 color;
 };
 
-struct Mesh
+struct Mesh : Entity
 {
     std::vector<Vertex> vertices;
     std::vector<U32>    indices;
@@ -36,6 +38,57 @@ struct Mesh
         : vertices(vertices), indices(indices)
     {
         load();
+    }
+
+    Mesh(std::string path, bool b)
+    {
+        U32                i = 0;
+        std::ifstream      file = std::ifstream(path);
+        std::istringstream stream;
+        std::string        line;
+        std::string        value;
+        std::string        token;
+        std::string        lastToken = "";
+        if (file.is_open())
+        {
+            while (getline(file, line))
+            {
+                i++;
+                if (i > 25) break;
+                stream = std::istringstream(line);
+                stream >> token;
+                if (token != lastToken) i = 0;
+                lastToken = token;
+
+                if (token == "v")
+                {
+                    vertices.push_back(Vertex());
+                    stream >> value;
+                    vertices[i].position.x = std::stof(value);
+                    stream >> value;
+                    vertices[i].position.y = std::stof(value);
+                    stream >> value;
+                    vertices[i].position.z = std::stof(value);
+                }
+                else if (token == "vn")
+                {
+                    stream >> value;
+                    vertices[i].normal.x = std::stof(value);
+                    stream >> value;
+                    vertices[i].normal.y = std::stof(value);
+                    stream >> value;
+                    vertices[i].normal.z = std::stof(value);
+                }
+                else if (token == "f")
+                {
+                }
+            }
+            file.close();
+        }
+        else
+        {
+            std::cout << "file not read." << std::endl;
+        }
     }
 
     Mesh(std::string path)
@@ -61,6 +114,11 @@ struct Mesh
                     attrib.vertices[3 * index.vertex_index + 1],
                     attrib.vertices[3 * index.vertex_index + 2]);
 
+                vertex.barycentric = V3(
+                    index.vertex_index % 3 == 0 ? 1 : 0,
+                    index.vertex_index % 3 == 1 ? 1 : 0,
+                    index.vertex_index % 3 == 2 ? 1 : 0);
+
                 vertex.normal = V3(
                     attrib.normals[3 * index.normal_index + 0],
                     attrib.normals[3 * index.normal_index + 1],
@@ -74,10 +132,29 @@ struct Mesh
         }
     }
 
-    void draw()
+    void flattenNormals()
+    {
+        for (U32 index = 0; index < indices.size(); index += 3)
+        {
+            V3 normal = normalize(cross(
+                vertices[indices[index]].position - vertices[indices[index + 1]].position,
+                vertices[indices[index]].position - vertices[indices[index + 2]].position));
+
+            vertices[indices[index + 0]].normal = normal;
+            vertices[indices[index + 1]].normal = normal;
+            vertices[indices[index + 2]].normal = normal;
+        }
+    }
+
+    void draw(bool wireFrame = false)
     {
         glBindVertexArray(vertexArray);
-        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+
+        if (wireFrame)
+            glDrawElements(GL_LINES, indices.size(), GL_UNSIGNED_INT, 0);
+        else
+            glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+
         glBindVertexArray(0);
     }
 
@@ -101,12 +178,16 @@ struct Mesh
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, position));
 
+        // Vertex Positions
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, barycentric));
+
         // Vertex Normals
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, normal));
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, normal));
 
         // Vertex Colors
         glEnableVertexAttribArray(2);
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, color));
+        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, color));
     }
 };

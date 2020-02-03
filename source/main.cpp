@@ -23,17 +23,28 @@
 #include <stdio.h>
 
 // settings
-const U32 SCR_WIDTH = 800;
-const U32 SCR_HEIGHT = 600;
+const U32 SCR_WIDTH = 1366;
+const U32 SCR_HEIGHT = 768;
 const F32 DRAW_DISTANCE = 200.0f;
 
-// camera
-Camera camera(V3(0.0f, 0.0f, 5.0f));
+struct Time
+{
+    F32 current;
+    F32 delta;
 
-// timing
-F32  deltaTime = 0.0f;
-F32  lastFrame = 0.0f;
-bool firstMouse = true;
+    Time() : current(0.0f), delta(0.0f) {}
+    Time(F32 time) : current(time), delta(0.0f) {}
+
+    void update(F32 time)
+    {
+        delta = time - current;
+        current = time;
+    }
+};
+
+Time   t = Time();
+V3     cameraPosition = normalize(V3(0.0f, 1.0f, 2.0f));
+Camera camera(cameraPosition, V3(0.0f, 1.0f, 0.0f), -90.0f, -30.0f);
 
 void processInput(GLFWwindow *window)
 {
@@ -41,13 +52,13 @@ void processInput(GLFWwindow *window)
         glfwSetWindowShouldClose(window, true);
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera.processKeyboard(FORWARD, deltaTime);
+        camera.processKeyboard(FORWARD, t.delta);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera.processKeyboard(BACKWARD, deltaTime);
+        camera.processKeyboard(BACKWARD, t.delta);
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera.processKeyboard(LEFT, deltaTime);
+        camera.processKeyboard(LEFT, t.delta);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera.processKeyboard(RIGHT, deltaTime);
+        camera.processKeyboard(RIGHT, t.delta);
 }
 
 // glfw: callbacks
@@ -101,9 +112,9 @@ I32 main()
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);  // enable vsync
     glfwSetFramebufferSizeCallback(window, glfw_framebufferSizeCallback);
-    glfwSetCursorPosCallback(window, mouseCallback);
-    glfwSetScrollCallback(window, glfw_scrollCallback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    // glfwSetCursorPosCallback(window, mouseCallback);
+    // glfwSetScrollCallback(window, glfw_scrollCallback);
+    // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     // glad: load function pointers
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -126,68 +137,98 @@ I32 main()
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
 
-    // Our state
-    bool   show_demo_window = true;
-    bool   show_another_window = false;
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
     // build and compile our shader zprog ram
     Shader shader = Shader("shaders/shader.vert", "shaders/shader.frag");
     shader.use();
 
     // load mesh
-    Mesh mesh = Mesh("./assets/ball.obj");
+    Mesh mesh = Mesh("./assets/suzanne.obj", true);
+    return 1;
+    mesh.flattenNormals();
     mesh.load();
+
+    // imgui: state
+    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+    struct State
+    {
+        F32 zoom = 5;
+        F32 rotationSpeed = 0.25;
+        V3  translation = V3(0, 0, 0);
+    };
+
+    static State state = State();
+
+    t.update(glfwGetTime());
 
     // render loop
     while (!glfwWindowShouldClose(window))
     {
-        glfwPollEvents();
-
-        // Start the Dear ImGui frame
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-
-        // per-frame time logic
-        F32 currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
-
-        // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-        if (show_demo_window)
-            ImGui::ShowDemoWindow(&show_demo_window);
+        // time
+        t.update(glfwGetTime());
 
         // input
         processInput(window);
 
-        // render
+        // clear
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // activate shader
-        shader.use();
+        // scene
 
-        // pass projection matrix to shader (note that in this case it could change every frame)
-        M4 projection = perspective(radians(camera.zoom), (F32)SCR_WIDTH / (F32)SCR_HEIGHT, 0.1f, DRAW_DISTANCE);
-        shader.setM4("projection", projection);
+        mesh.m = mesh.m * rotationY(t.delta * state.rotationSpeed * 2 * PI);
+        mesh.m.translate(state.translation);
+        shader.setM4("model", mesh.m);
 
-        // camera/view transformation
+        camera.position = cameraPosition * state.zoom;
         M4 view = camera.getViewMatrix();
         shader.setM4("view", view);
 
-        // calculate the model matrix for each object and pass it to shader before drawing
-        M4 model = M4(1.0f);  // make sure to initialize matrix to identity matrix first
-        shader.setM4("model", model);
+        M4 projection = perspective(radians(camera.zoom), (F32)SCR_WIDTH / (F32)SCR_HEIGHT, 0.1f, DRAW_DISTANCE);
+        shader.setM4("projection", projection);
 
-        // set light direction
-        V3 light = normalize(V3(0.2, -1.0, 0.4));
+        V3 light = normalize(V3(0.2f, -1.0f, -0.4f));
         shader.setV3("light", light);
 
         mesh.draw();
 
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        // -------------------------------------------------------------------------------
+        // imgui: create frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        // imgui: create gui
+        // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
+        {
+            static float f = 1.0f;
+            static int   counter = 0;
+
+            ImGui::Begin("Hello, world!");  // Create a window called "Hello, world!" and append into it.
+
+            ImGui::Text("This is some useful text.");  // Display some text (you can use a format strings too)
+
+            ImGui::SliderFloat("zoom", &state.zoom, 0.0f, 10.0f);
+
+            ImGui::SliderFloat("rotation speed", &state.rotationSpeed, 0.0f, 1.0f);
+
+            ImGui::SliderFloat("translate x", &state.translation.x, -5.0f, 5.0f);
+            ImGui::SliderFloat("translate y", &state.translation.y, -5.0f, 5.0f);
+            ImGui::SliderFloat("translate z", &state.translation.z, -5.0f, 5.0f);
+
+            if (ImGui::Button("Button"))  // Buttons return true when clicked (most widgets return true when edited/activated)
+                counter++;
+            ImGui::SameLine();
+            ImGui::Text("counter = %d", counter);
+
+            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+            ImGui::End();
+        }
+
+        // imgui: render
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        // glfw: swap and poll
         glfwSwapBuffers(window);
         glfwPollEvents();
     }

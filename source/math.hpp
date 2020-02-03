@@ -17,12 +17,12 @@ template <typename T>
 struct M4_T;
 
 // Scalar
-#define PI 3.14159265359f;
+const F32 PI = 3.14159265359f;
 
 template <typename T>
 F radians(T degrees)
 {
-    return (F)degrees * 3.14159265359f / 180.0f;
+    return (F)degrees * PI / 180.0f;
 }
 
 // Vector 2
@@ -365,6 +365,11 @@ struct M4_T
     {
         return &x.x;
     }
+
+    void translate(V3_T<T> v)
+    {
+        w = V4_T<T>(v, w.w);
+    }
 };
 
 template <typename T>
@@ -434,54 +439,69 @@ M4_T<F> perspective(F fovy, F aspect, F zNear, F zFar)
     return m;
 }
 
+// clang-format off
+M4_T<F> scale(F n)
+{
+    return M4_T<F>(
+        V4_T<F>(n, 0, 0, 0),
+        V4_T<F>(0, n, 0, 0),
+        V4_T<F>(0, 0, n, 0),
+        V4_T<F>(0, 0, 0, 1)
+    );
+}
+
+M4_T<F> translation(V3_T<F> v)
+{
+    return M4_T<F>(
+        V4_T<F>(1, 0, 0, 0),
+        V4_T<F>(0, 1, 0, 0),
+        V4_T<F>(0, 0, 1, 0),
+        V4_T<F>(      v, 1)
+    );
+}
+
 M4_T<F> rotation(F theta, V3_T<F> v)
 {
     v = normalize(v);
 
-    // clang-format off
     return M4_T<F>(
         V4_T<F>(      cos(theta) + (1 - cos(theta)) * v.x * v.x, (1 - cos(theta)) * v.x * v.y + v.z * sin(theta), (1 - cos(theta)) * v.x * v.z - v.y * sin(theta), 0),
         V4_T<F>((1 - cos(theta)) * v.x * v.y - v.z * sin(theta),       cos(theta) + (1 - cos(theta)) * v.y * v.y, (1 - cos(theta)) * v.y * v.z + v.x * sin(theta), 0),
         V4_T<F>((1 - cos(theta)) * v.x * v.z + v.y * sin(theta), (1 - cos(theta)) * v.y * v.z - v.x * sin(theta),       cos(theta) + (1 - cos(theta)) * v.z * v.z, 0),
         V4_T<F>(                                              0,                                               0,                                               0, 1)
     );
-    // clang-format on
 }
 
 M4_T<F> rotationX(F theta)
 {
-    // clang-format off
     return M4_T<F>(
         V4_T<F>(1,           0,          0, 0),
         V4_T<F>(0,  cos(theta), sin(theta), 0),
         V4_T<F>(0, -sin(theta), cos(theta), 0),
         V4_T<F>(0,           0,          0, 1)
     );
-    // clang-format on
 }
 
 M4_T<F> rotationY(F theta)
 {
-    // clang-format off
     return M4_T<F>(
         V4_T<F>(cos(theta), 0, -sin(theta), 0),
         V4_T<F>(         0, 1,           0, 0),
         V4_T<F>(sin(theta), 0,  cos(theta), 0),
         V4_T<F>(         0, 0,           0, 1)
     );
-    // clang-format on
 }
 
 M4_T<F> rotationZ(F theta)
 {
-    // clang-format off
     return M4_T<F>(
         V4_T<F>( cos(theta), sin(theta), 0, 0),
         V4_T<F>(-sin(theta), cos(theta), 0, 0),
         V4_T<F>(          0,          0, 1, 0),
-        V4_T<F>(          0,          0, 0, 1));
-    // clang-format on
+        V4_T<F>(          0,          0, 0, 1)
+    );
 }
+// clang-format on
 
 typedef V2_T<F> V2;
 typedef V3_T<F> V3;
