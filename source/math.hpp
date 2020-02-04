@@ -152,6 +152,11 @@ struct V3_T
     {
         return &x;
     }
+
+    std::string string()
+    {
+        return "[" + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z) + "]";
+    }
 };
 
 template <typename T>

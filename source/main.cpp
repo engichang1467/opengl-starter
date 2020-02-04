@@ -26,6 +26,7 @@
 const U32 SCR_WIDTH = 1366;
 const U32 SCR_HEIGHT = 768;
 const F32 DRAW_DISTANCE = 200.0f;
+V3        color = V3(0.7f, 0.3f, 0.4f);
 
 struct Time
 {
@@ -140,12 +141,14 @@ I32 main()
     // build and compile our shader zprog ram
     Shader shader = Shader("shaders/shader.vert", "shaders/shader.frag");
     shader.use();
+    shader.setV3("u_color", color);
 
     // load mesh
-    Mesh mesh = Mesh("./assets/suzanne.obj", true);
-    return 1;
-    mesh.flattenNormals();
+    WingedEdgeMesh mesh = WingedEdgeMesh("./assets/torus.obj");
+    // return 1;
+    // mesh.flattenNormals();
     mesh.load();
+    mesh.m = scale(0.1f);
 
     // imgui: state
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
@@ -188,7 +191,7 @@ I32 main()
         shader.setM4("projection", projection);
 
         V3 light = normalize(V3(0.2f, -1.0f, -0.4f));
-        shader.setV3("light", light);
+        shader.setV3("u_light", light);
 
         mesh.draw();
 
