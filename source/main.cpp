@@ -37,6 +37,7 @@ struct State
     bool showWireframe = true;
     bool isSmooth = false;
     bool isFirstFrame = true;
+    I32  selectedModelIndex = 4;
 };
 
 static State state = State();
@@ -154,7 +155,7 @@ I32 main()
     // build and compile our shader zprog ram
     Shader shader = Shader("shaders/shader.vert", "shaders/shader.frag");
     shader.use();
-    shader.setV3("u_color", color);
+    shader.setV3("color", color);
 
     // load mesh
     WingedEdgeMesh mesh;
@@ -182,55 +183,42 @@ I32 main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // imgui: create gui
-        // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
+        ImGui::Begin("Hello, world!");  // Create a window called "Hello, world!" and append into it.
+
+        ImGui::Text("This is some useful text.");  // Display some text (you can use a format strings too)
+
+        ImGui::SliderFloat("zoom", &state.zoom, 0.0f, 10.0f);
+
+        ImGui::SliderFloat("rotation speed", &state.rotationSpeed, 0.0f, 1.0f);
+        ImGui::SliderFloat("rotate", &state.rotation, 0.0f, 1.0f);
+
+        ImGui::SliderFloat("translate x", &state.translation.x, -5.0f, 5.0f);
+        ImGui::SliderFloat("translate y", &state.translation.y, -5.0f, 5.0f);
+        ImGui::SliderFloat("translate z", &state.translation.z, -5.0f, 5.0f);
+
+        ImGui::Checkbox("Show Wireframe", &state.showWireframe);
+        if (ImGui::Checkbox("Smooth", &state.isSmooth))
         {
-            static float f = 1.0f;
-            static int   counter = 0;
-
-            ImGui::Begin("Hello, world!");  // Create a window called "Hello, world!" and append into it.
-
-            ImGui::Text("This is some useful text.");  // Display some text (you can use a format strings too)
-
-            ImGui::SliderFloat("zoom", &state.zoom, 0.0f, 10.0f);
-
-            ImGui::SliderFloat("rotation speed", &state.rotationSpeed, 0.0f, 1.0f);
-            ImGui::SliderFloat("rotate", &state.rotation, 0.0f, 1.0f);
-
-            ImGui::SliderFloat("translate x", &state.translation.x, -5.0f, 5.0f);
-            ImGui::SliderFloat("translate y", &state.translation.y, -5.0f, 5.0f);
-            ImGui::SliderFloat("translate z", &state.translation.z, -5.0f, 5.0f);
-
-            ImGui::Checkbox("Show Wireframe", &state.showWireframe);
-            if (ImGui::Checkbox("Smooth", &state.isSmooth))
-            {
-                mesh.load(state.isSmooth);
-            }
-
-            // Simplified one-liner Combo() API, using values packed in a single constant string
-            static int  selectedModelIndex = 4;
-            const char *models[] = {
-                "torus.obj",
-                "suzanne.obj",
-                "horse.obj",
-                "bunny.obj",
-                "chess_piece.obj",
-                "tet.obj"};
-
-            if (ImGui::Combo("model", &selectedModelIndex, models, IM_ARRAYSIZE(models)) || state.isFirstFrame)
-            {
-                mesh = WingedEdgeMesh("assets/" + std::string(models[selectedModelIndex]));
-                mesh.load(state.isSmooth);
-            }
-
-            if (ImGui::Button("Button"))  // Buttons return true when clicked (most widgets return true when edited/activated)
-                counter++;
-            ImGui::SameLine();
-            ImGui::Text("counter = %d", counter);
-
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-            ImGui::End();
+            mesh.load(state.isSmooth);
         }
+
+        // Simplified one-liner Combo() API, using values packed in a single constant string
+        const char *models[] = {
+            "torus.obj",
+            "suzanne.obj",
+            "horse.obj",
+            "bunny.obj",
+            "chess_piece.obj",
+            "tet.obj"};
+
+        if (ImGui::Combo("model", &state.selectedModelIndex, models, IM_ARRAYSIZE(models)) || state.isFirstFrame)
+        {
+            mesh = WingedEdgeMesh("assets/" + std::string(models[state.selectedModelIndex]));
+            mesh.load(state.isSmooth);
+        }
+
+        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+        ImGui::End();
 
         // scene
         state.rotation = state.rotation + state.rotationSpeed * t.delta;
@@ -248,9 +236,9 @@ I32 main()
         shader.setM4("projection", projection);
 
         V3 light = normalize(V3(0.2f, -1.0f, -0.4f));
-        shader.setV3("u_light", light);
+        shader.setV3("light", light);
 
-        shader.setBool("uShowWireframe", state.showWireframe);
+        shader.setBool("showWireframe", state.showWireframe);
 
         mesh.draw();
 

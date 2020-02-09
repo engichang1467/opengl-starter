@@ -1,44 +1,26 @@
 #version 330 core
 
-out vec4 FragColor;
+in vec3 vertColor;
+in vec3 vertBarycentric;
 
-in vec3 color;
-in vec3 bary;
+out vec4 fragColor;
 
-uniform bool uShowWireframe;
+uniform bool showWireframe;
 
-
-float thickness = 0.025;
-
+// anit-aliasing
 #extension GL_OES_standard_derivatives : enable
-float edgeFactor(){
-    vec3 d = fwidth(bary);
-    vec3 a3 = smoothstep(vec3(0.0), d*0.95, bary);
+float edgeFactor()
+{
+    vec3 d = fwidth(vertBarycentric);
+    vec3 a3 = smoothstep(vec3(0.0), d*0.95, vertBarycentric);
     return min(min(a3.x, a3.y), a3.z);
 }
 
-
 void main()
 {
-	// if (bary.x < thickness || bary.y < thickness || bary.z < thickness) {
-	// 	FragColor = vec4(0.0, 0.0, 0.0, (1.0-edgeFactor())*0.95);
-	// } else {
-	// 	FragColor = vec4(0.0, 0.0, 0.0, (1.0-edgeFactor())*0.95);
-	// }
-	// if(gl_FrontFacing) {
-	//     FragColor = vec4(0.0, 0.0, 0.0, (1.0-edgeFactor())*0.95);
-	// } else {
-	//     FragColor = vec4(0.0, 0.0, 0.0, (1.0-edgeFactor())*0.7);
-	// }
-
-    // FragColor.rgb = mix(vec3(0.0), vec3(0.5), edgeFactor());
-	// FragColor = vec4(0.0, 0.0, 0.0, (1.0-edgeFactor())*0.95);
-
-	if (uShowWireframe) {
-		FragColor = vec4(mix(vec3(0.0), color, edgeFactor()), 1.0);
+	if (showWireframe) {
+		fragColor = vec4(mix(vec3(0.0), vertColor, edgeFactor()), 1.0);
 	} else {
-		FragColor = vec4(color, 1.0);
+		fragColor = vec4(vertColor, 1.0);
 	}
-
-
 }

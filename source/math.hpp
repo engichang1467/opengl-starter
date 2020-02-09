@@ -157,6 +157,11 @@ struct V3_T
     {
         return "[" + std::to_string(x).substr(0, 8) + ", " + std::to_string(y).substr(0, 8) + ", " + std::to_string(z).substr(0, 8) + "]";
     }
+
+    T hash()
+    {
+        return x * 23 + y * 29 + z * 31;
+    }
 };
 
 template <typename T>

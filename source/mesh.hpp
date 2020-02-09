@@ -34,24 +34,25 @@ V3_T<U32> processIndices(std::string string)
 
 struct Edge
 {
-    U32 startVertexIndex;
-    U32 endVertexIndex;
-    U32 faceIndex;
-    U32 nextIndex;
-    U32 previousIndex;
-    U32 symmetricIndex;
+    Vertex* startVertex;
+    Vertex* endVertex;
+    Face*   face;
+    U32     nextIndex;
+    U32     previousIndex;
+    U32     symmetricIndex;
 };
 
 struct Face
 {
     U32 edgeIndex;  // always the counter-clockwise egde
+    V3  normal;
 };
 
 struct Vertex
 {
     V3  position;
     V3  barycentric;
-    V3  normal = V3(1, 0, 0);
+    V3  normal = V3(0, 0, 0);
     U32 edgeIndex;  // always the counter-clockwise egde
 };
 
@@ -102,16 +103,6 @@ struct Mesh : Entity
 
                     vIndex++;
                 }
-                else if (token == "vn")
-                {
-                    stream >> valueString;
-                    vertices[vnIndex].normal.x = std::stof(valueString);
-                    stream >> valueString;
-                    vertices[vnIndex].normal.y = std::stof(valueString);
-                    stream >> valueString;
-                    vertices[vnIndex].normal.z = std::stof(valueString);
-                    vnIndex++;
-                }
                 else if (token == "f")
                 {
                     stream >> valueString;
@@ -134,67 +125,10 @@ struct Mesh : Entity
             std::cout << "file not read." << std::endl;
         }
 
+        // scale vertices
         for (U32 vertexIndex = 0; vertexIndex < vertices.size(); vertexIndex++)
         {
             vertices[vertexIndex].position = vertices[vertexIndex].position * (1 / max);
-        }
-
-        OUT(vIndex)
-        OUT(vnIndex)
-    }
-
-    Mesh(std::string path, bool b)
-    {
-        tinyobj::attrib_t                attrib;
-        std::vector<tinyobj::shape_t>    shapes;
-        std::vector<tinyobj::material_t> materials;
-        std::string                      warn, err;
-
-        if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, path.c_str()))
-        {
-            throw std::runtime_error(warn + err);
-        }
-
-        for (const auto& shape : shapes)
-        {
-            for (const auto& index : shape.mesh.indices)
-            {
-                Vertex vertex = {};
-
-                vertex.position = V3(
-                    attrib.vertices[3 * index.vertex_index + 0],
-                    attrib.vertices[3 * index.vertex_index + 1],
-                    attrib.vertices[3 * index.vertex_index + 2]);
-
-                vertex.barycentric = V3(
-                    index.vertex_index % 3 == 0 ? 1 : 0,
-                    index.vertex_index % 3 == 1 ? 1 : 0,
-                    index.vertex_index % 3 == 2 ? 1 : 0);
-
-                vertex.normal = V3(
-                    attrib.normals[3 * index.normal_index + 0],
-                    attrib.normals[3 * index.normal_index + 1],
-                    attrib.normals[3 * index.normal_index + 2]);
-
-                // vertex.color = V3(0.5f, 0.5f, 0.5f);
-
-                vertices.push_back(vertex);
-                indices.push_back(indices.size());
-            }
-        }
-    }
-
-    void flattenNormals()
-    {
-        for (U32 index = 0; index < indices.size(); index += 3)
-        {
-            V3 normal = normalize(cross(
-                vertices[indices[index]].position - vertices[indices[index + 1]].position,
-                vertices[indices[index]].position - vertices[indices[index + 2]].position));
-
-            vertices[indices[index + 0]].normal = normal;
-            vertices[indices[index + 1]].normal = normal;
-            vertices[indices[index + 2]].normal = normal;
         }
     }
 
@@ -234,10 +168,6 @@ struct Mesh : Entity
         // Vertex Normals
         glEnableVertexAttribArray(2);
         glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
-
-        // // Vertex Colors
-        // glEnableVertexAttribArray(2);
-        // glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, color));
     }
 };
 
@@ -251,17 +181,20 @@ struct WingedEdgeMesh : Mesh
 
     WingedEdgeMesh(std::string path) : Mesh(path)
     {
-        OUT("start constructor");
-
         std::unordered_map<std::string, U32> edgeIndexMap;
 
         for (U32 faceIndex = 0; faceIndex * 3 < indices.size(); faceIndex += 1)  // for each face
         {
             faces.push_back(Face());
+            Face* face = &faces.back();
 
-            U32 vertexIndex1 = indices[faceIndex * 3 + 0];
-            U32 vertexIndex2 = indices[faceIndex * 3 + 1];
-            U32 vertexIndex3 = indices[faceIndex * 3 + 2];
+            Vertex* vertex1 = &vertices[indices[faceIndex * 3 + 0]];
+            Vertex* vertex2 = &vertices[indices[faceIndex * 3 + 1]];
+            Vertex* vertex3 = &vertices[indices[faceIndex * 3 + 2]];
+
+            V3 normal = normalize(cross(
+                vertex1->position - vertex2->position,
+                vertex1->position - vertex3->position));
 
             U32 edgeIndex1 = edges.size();
             edges.push_back(Edge());
@@ -273,44 +206,51 @@ struct WingedEdgeMesh : Mesh
             edges.push_back(Edge());
 
             // faces
-            faces[faceIndex].edgeIndex = edgeIndex1;
+            face->edgeIndex = edgeIndex1;
+            face->normal = normal;
 
             // vertices
-            vertices[vertexIndex1].edgeIndex = edgeIndex1;
-            vertices[vertexIndex2].edgeIndex = edgeIndex2;
-            vertices[vertexIndex3].edgeIndex = edgeIndex3;
+            vertex1->edgeIndex = edgeIndex1;
+            vertex1->normal = vertex1->normal + normal;
+
+            vertex2->edgeIndex = edgeIndex2;
+            vertex2->normal = vertex2->normal + normal;
+
+            vertex3->edgeIndex = edgeIndex3;
+            vertex3->normal = vertex3->normal + normal;
 
             // edges
-            edges[edgeIndex1].startVertexIndex = vertexIndex1;
-            edges[edgeIndex1].endVertexIndex = vertexIndex2;
-            edges[edgeIndex1].faceIndex = faceIndex;
+            edges[edgeIndex1].startVertex = vertex1;
+            edges[edgeIndex1].endVertex = vertex2;
+            edges[edgeIndex1].face = face;
             edges[edgeIndex1].previousIndex = edgeIndex3;
             edges[edgeIndex1].nextIndex = edgeIndex2;
+            edgeIndexMap[vertex1->position.string() + vertex2->position.string()] = edgeIndex1;
 
-            edges[edgeIndex2].startVertexIndex = vertexIndex2;
-            edges[edgeIndex2].endVertexIndex = vertexIndex3;
-            edges[edgeIndex2].faceIndex = faceIndex;
+            edges[edgeIndex2].startVertex = vertex2;
+            edges[edgeIndex2].endVertex = vertex3;
+            edges[edgeIndex2].face = face;
             edges[edgeIndex2].previousIndex = edgeIndex1;
             edges[edgeIndex2].nextIndex = edgeIndex3;
+            edgeIndexMap[vertex2->position.string() + vertex3->position.string()] = edgeIndex2;
 
-            edges[edgeIndex3].startVertexIndex = vertexIndex3;
-            edges[edgeIndex3].endVertexIndex = vertexIndex1;
-            edges[edgeIndex3].faceIndex = faceIndex;
+            edges[edgeIndex3].startVertex = vertex3;
+            edges[edgeIndex3].endVertex = vertex1;
+            edges[edgeIndex3].face = face;
             edges[edgeIndex3].previousIndex = edgeIndex2;
             edges[edgeIndex3].nextIndex = edgeIndex1;
+            edgeIndexMap[vertex3->position.string() + vertex1->position.string()] = edgeIndex3;
         }
 
-        // for (auto face : faces)
-        // {
-        //     U32 vertexIndex1 = edges[face.edgeIndex].startVertexIndex;
-        //     U32 vertexIndex2 = edges[edges[face.edgeIndex].nextIndex].startVertexIndex;
-        //     U32 vertexIndex3 = edges[edges[edges[face.edgeIndex].nextIndex].nextIndex].startVertexIndex;
-        //     U32 vertexIndex4 = edges[edges[edges[edges[face.edgeIndex].nextIndex].nextIndex].nextIndex].startVertexIndex;
-        //     // std::cout << vertices[vertexIndex1].position.string() << " -> " << vertices[vertexIndex2].position.string() << " -> " << vertices[vertexIndex3].position.string() << std::endl;
-        //     std::cout << vertices[vertexIndex1].position.string() << " -> " << vertices[vertexIndex4].position.string() << std::endl;
-        // }
+        for (U32 vertexIndex = 0; vertexIndex < vertices.size(); vertexIndex += 1)  // for each vertex
+        {
+            vertices[vertexIndex].normal = normalize(vertices[vertexIndex].normal);
+        }
 
-        OUT("end constructor");
+        for (U32 edgeIndex = 0; edgeIndex < edges.size(); edgeIndex += 1)  // for each edge
+        {
+            edges[edgeIndex].symmetricIndex = edgeIndexMap[edges[edgeIndex].endVertex->position.string() + edges[edgeIndex].startVertex->position.string()];
+        }
     }
 
     void load(bool isSmooth = true)
@@ -320,29 +260,25 @@ struct WingedEdgeMesh : Mesh
         OUT("start load");
         for (Face face : faces)
         {
-            U32 vertexIndex1 = edges[face.edgeIndex].startVertexIndex;
-            U32 vertexIndex2 = edges[edges[face.edgeIndex].nextIndex].startVertexIndex;
-            U32 vertexIndex3 = edges[edges[edges[face.edgeIndex].nextIndex].nextIndex].startVertexIndex;
+            orderedVertices.push_back(*edges[face.edgeIndex].startVertex);
+            Vertex* vertex1 = &orderedVertices.back();
+
+            orderedVertices.push_back(*edges[edges[face.edgeIndex].nextIndex].startVertex);
+            Vertex* vertex2 = &orderedVertices.back();
+
+            orderedVertices.push_back(*edges[edges[edges[face.edgeIndex].nextIndex].nextIndex].startVertex);
+            Vertex* vertex3 = &orderedVertices.back();
 
             if (!isSmooth)
             {
-                V3 normal = normalize(cross(
-                    vertices[vertexIndex1].position - vertices[vertexIndex2].position,
-                    vertices[vertexIndex1].position - vertices[vertexIndex3].position));
-
-                vertices[vertexIndex1].normal = normal;
-                vertices[vertexIndex2].normal = normal;
-                vertices[vertexIndex3].normal = normal;
+                vertex1->normal = face.normal;
+                vertex2->normal = face.normal;
+                vertex3->normal = face.normal;
             }
 
-            orderedVertices.push_back(vertices[vertexIndex1]);
-            orderedVertices.back().barycentric = V3(1, 0, 0);
-
-            orderedVertices.push_back(vertices[vertexIndex2]);
-            orderedVertices.back().barycentric = V3(0, 1, 0);
-
-            orderedVertices.push_back(vertices[vertexIndex3]);
-            orderedVertices.back().barycentric = V3(0, 0, 1);
+            vertex1->barycentric = V3(1, 0, 0);
+            vertex2->barycentric = V3(0, 1, 0);
+            vertex3->barycentric = V3(0, 0, 1);
         }
 
         // vertex array object
@@ -366,9 +302,6 @@ struct WingedEdgeMesh : Mesh
         glEnableVertexAttribArray(2);
         glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
 
-        // // Vertex Colors
-        // glEnableVertexAttribArray(2);
-        // glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, color));
         OUT("end load");
     }
 
