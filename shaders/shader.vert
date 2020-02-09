@@ -5,6 +5,11 @@ layout (location = 2) in vec3 normal;
 // layout (location = 3) in vec3 vertexColor;
 
 out vec3 color;
+out vec3 bary;
+// out bool showWireframe;
+
+
+uniform bool uShowWireframe;
 
 uniform vec3 u_light;
 uniform vec3 u_color;
@@ -19,6 +24,9 @@ void main()
 
 	float diffuse = max(dot(vec3(model * vec4(normal, 0)), -u_light), 0.0);
 	color = (u_color * 0.5) + (diffuse * 0.5);
+
+	bary = barycentric;
+	// showWireframe = uShowWireframe;
 
 	// vec3 direction = vec3(view[0][2], view[1][2], view[2][2]);
 	// if (dot(direction, normal) < 0.0) {

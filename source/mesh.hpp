@@ -21,22 +21,38 @@
 #include <unordered_map>
 #include <vector>
 
+struct Face;
+struct Vertex;
+
+V3_T<U32> processIndices(std::string string)
+{
+    U32 dividerIndex1 = string.find("/");
+    U32 dividerIndex2 = string.rfind("/");
+
+    return V3_T<U32>(std::stoi(string.substr(0, dividerIndex1)), std::stoi(string.substr(dividerIndex1 + 1, dividerIndex2)), std::stoi(string.substr(dividerIndex2 + 1)));
+}
+
+struct Edge
+{
+    U32 startVertexIndex;
+    U32 endVertexIndex;
+    U32 faceIndex;
+    U32 nextIndex;
+    U32 previousIndex;
+    U32 symmetricIndex;
+};
+
+struct Face
+{
+    U32 edgeIndex;  // always the counter-clockwise egde
+};
+
 struct Vertex
 {
     V3  position;
     V3  barycentric;
-    V3  normal;
-    U32 edgeIndex;
-
-    bool operator<(Vertex vertex)
-    {
-        if (position.x < vertex.position.x) return true;
-        if (position.x > vertex.position.x) return false;
-        if (position.y < vertex.position.y) return true;
-        if (position.y > vertex.position.y) return false;
-        if (position.z < vertex.position.z) return true;
-        return false;
-    }
+    V3  normal = V3(1, 0, 0);
+    U32 edgeIndex;  // always the counter-clockwise egde
 };
 
 struct Mesh : Entity
@@ -45,58 +61,70 @@ struct Mesh : Entity
     std::vector<U32>    indices;
     U32                 vertexArray, vertexBuffer, elementBuffer;
 
-    Mesh(std::vector<Vertex> vertices, std::vector<U32> indices)
-        : vertices(vertices), indices(indices)
-    {
-        load();
-    }
+    Mesh(){};
 
     Mesh(std::string path)
     {
-        U32                i = 0;
+        U32                vIndex = 0, vnIndex = 0;
         std::ifstream      file = std::ifstream(path);
         std::istringstream stream;
         std::string        line;
-        std::string        value;
+        std::string        valueString;
         std::string        token;
-        std::string        lastToken = "";
+        F32                value;
+        F32                max = 0;
+        V3_T<U32>          indexVector;
         if (file.is_open())
         {
             while (getline(file, line))
             {
-                i++;
                 stream = std::istringstream(line);
                 stream >> token;
-                if (token != lastToken) i = 0;
-                lastToken = token;
 
                 if (token == "v")
                 {
                     vertices.push_back(Vertex());
-                    stream >> value;
-                    vertices[i].position.x = std::stof(value);
-                    stream >> value;
-                    vertices[i].position.y = std::stof(value);
-                    stream >> value;
-                    vertices[i].position.z = std::stof(value);
+
+                    stream >> valueString;
+                    value = std::stof(valueString);
+                    vertices[vIndex].position.x = value;
+                    if (max < value) max = value;
+
+                    stream >> valueString;
+                    value = std::stof(valueString);
+                    vertices[vIndex].position.y = value;
+                    if (max < value) max = value;
+
+                    stream >> valueString;
+                    value = std::stof(valueString);
+                    vertices[vIndex].position.z = value;
+                    if (max < value) max = value;
+
+                    vIndex++;
                 }
                 else if (token == "vn")
                 {
-                    stream >> value;
-                    vertices[i].normal.x = std::stof(value);
-                    stream >> value;
-                    vertices[i].normal.y = std::stof(value);
-                    stream >> value;
-                    vertices[i].normal.z = std::stof(value);
+                    stream >> valueString;
+                    vertices[vnIndex].normal.x = std::stof(valueString);
+                    stream >> valueString;
+                    vertices[vnIndex].normal.y = std::stof(valueString);
+                    stream >> valueString;
+                    vertices[vnIndex].normal.z = std::stof(valueString);
+                    vnIndex++;
                 }
                 else if (token == "f")
                 {
-                    stream >> value;
-                    indices.push_back(std::stoi(value.substr(0, value.find("/"))) - 1);
-                    stream >> value;
-                    indices.push_back(std::stoi(value.substr(0, value.find("/"))) - 1);
-                    stream >> value;
-                    indices.push_back(std::stoi(value.substr(0, value.find("/"))) - 1);
+                    stream >> valueString;
+                    indexVector = processIndices(valueString);
+                    indices.push_back(indexVector.x - 1);
+
+                    stream >> valueString;
+                    indexVector = processIndices(valueString);
+                    indices.push_back(indexVector.x - 1);
+
+                    stream >> valueString;
+                    indexVector = processIndices(valueString);
+                    indices.push_back(indexVector.x - 1);
                 }
             }
             file.close();
@@ -105,6 +133,14 @@ struct Mesh : Entity
         {
             std::cout << "file not read." << std::endl;
         }
+
+        for (U32 vertexIndex = 0; vertexIndex < vertices.size(); vertexIndex++)
+        {
+            vertices[vertexIndex].position = vertices[vertexIndex].position * (1 / max);
+        }
+
+        OUT(vIndex)
+        OUT(vnIndex)
     }
 
     Mesh(std::string path, bool b)
@@ -119,9 +155,9 @@ struct Mesh : Entity
             throw std::runtime_error(warn + err);
         }
 
-        for (const auto &shape : shapes)
+        for (const auto& shape : shapes)
         {
-            for (const auto &index : shape.mesh.indices)
+            for (const auto& index : shape.mesh.indices)
             {
                 Vertex vertex = {};
 
@@ -189,15 +225,15 @@ struct Mesh : Entity
 
         // Vertex Positions
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, position));
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
 
         // Vertex Positions
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, barycentric));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, barycentric));
 
         // Vertex Normals
         glEnableVertexAttribArray(2);
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, normal));
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
 
         // // Vertex Colors
         // glEnableVertexAttribArray(2);
@@ -205,141 +241,108 @@ struct Mesh : Entity
     }
 };
 
-struct Edge
-{
-    U32 origVertexIndex;
-    U32 destVertexIndex;
-    U32 leftFaceIndex;
-    U32 rightFaceIndex;
-    U32 cwLeftEdgeIndex;
-    U32 ccwLeftEdgeIndex;
-    U32 cwRightEdgeIndex;
-    U32 ccwRightEdgeIndex;
-};
-
-struct Face
-{
-    U32 edgeIndex;
-};
-
 struct WingedEdgeMesh : Mesh
 {
     std::vector<Face>   faces;
     std::vector<Edge>   edges;
-    std::vector<Vertex> renderVertices;
+    std::vector<Vertex> orderedVertices;  // for rendering
+
+    WingedEdgeMesh() : Mesh() {}
 
     WingedEdgeMesh(std::string path) : Mesh(path)
     {
-        std::unordered_map<std::string, U32> edgeMap;
+        OUT("start constructor");
+
+        std::unordered_map<std::string, U32> edgeIndexMap;
 
         for (U32 faceIndex = 0; faceIndex * 3 < indices.size(); faceIndex += 1)  // for each face
         {
-            Face face = Face();
+            faces.push_back(Face());
 
-            U32 ccwLastEdgeIndex, cwLastEdgeIndex, ccwCurrentEdgeIndex, cwCurrentEdgeIndex;
-            for (U32 offset = 0; offset < 4; offset += 1)  // for each edge + 1
-            {
-                U32 firstVertexIndex = indices[faceIndex * 3 + offset];
-                U32 secondVertexIndex = indices[faceIndex * 3 + ((offset + 1) % 3)];
+            U32 vertexIndex1 = indices[faceIndex * 3 + 0];
+            U32 vertexIndex2 = indices[faceIndex * 3 + 1];
+            U32 vertexIndex3 = indices[faceIndex * 3 + 2];
 
-                // counter clock-wise edges
-                // ----------------------------------------------------------------
-                std::string ccwEdgeKey = vertices[firstVertexIndex].position.string() + vertices[secondVertexIndex].position.string();
+            U32 edgeIndex1 = edges.size();
+            edges.push_back(Edge());
 
-                // get edge index
-                if (0 == edgeMap.count(ccwEdgeKey))  // if edge does not exist
-                {
-                    ccwCurrentEdgeIndex = edges.size();
-                    edgeMap[ccwEdgeKey] = ccwCurrentEdgeIndex;
+            U32 edgeIndex2 = edges.size();
+            edges.push_back(Edge());
 
-                    Edge edge = Edge();
-                    edge.origVertexIndex = firstVertexIndex;
-                    edge.destVertexIndex = secondVertexIndex;
-                    edges.push_back(edge);
-                }
-                else  // if edge exists
-                {
-                    ccwCurrentEdgeIndex = edgeMap[ccwEdgeKey];
-                }
+            U32 edgeIndex3 = edges.size();
+            edges.push_back(Edge());
 
-                // add last edge as incedent
-                if (ccwLastEdgeIndex)  // if not first iteration
-                {
-                    edges[ccwCurrentEdgeIndex].cwLeftEdgeIndex = ccwLastEdgeIndex;
-                    edges[ccwLastEdgeIndex].ccwLeftEdgeIndex = ccwCurrentEdgeIndex;
-                }
+            // faces
+            faces[faceIndex].edgeIndex = edgeIndex1;
 
-                ccwLastEdgeIndex = ccwCurrentEdgeIndex;
+            // vertices
+            vertices[vertexIndex1].edgeIndex = edgeIndex1;
+            vertices[vertexIndex2].edgeIndex = edgeIndex2;
+            vertices[vertexIndex3].edgeIndex = edgeIndex3;
 
-                edges[ccwCurrentEdgeIndex].leftFaceIndex = faceIndex;
+            // edges
+            edges[edgeIndex1].startVertexIndex = vertexIndex1;
+            edges[edgeIndex1].endVertexIndex = vertexIndex2;
+            edges[edgeIndex1].faceIndex = faceIndex;
+            edges[edgeIndex1].previousIndex = edgeIndex3;
+            edges[edgeIndex1].nextIndex = edgeIndex2;
 
-                vertices[firstVertexIndex].edgeIndex = ccwCurrentEdgeIndex;
+            edges[edgeIndex2].startVertexIndex = vertexIndex2;
+            edges[edgeIndex2].endVertexIndex = vertexIndex3;
+            edges[edgeIndex2].faceIndex = faceIndex;
+            edges[edgeIndex2].previousIndex = edgeIndex1;
+            edges[edgeIndex2].nextIndex = edgeIndex3;
 
-                // clock-wise edges (reverse)
-                // ----------------------------------------------------------------
-                std::string cwEdgeKey = vertices[secondVertexIndex].position.string() + vertices[firstVertexIndex].position.string();
-
-                // get edge index
-                if (0 < edgeMap.count(cwEdgeKey))  // if edge does not exist
-                {
-                    cwCurrentEdgeIndex = edges.size();
-                    edgeMap[cwEdgeKey] = cwCurrentEdgeIndex;
-
-                    Edge edge = Edge();
-                    edge.origVertexIndex = secondVertexIndex;
-                    edge.destVertexIndex = firstVertexIndex;
-                    edges.push_back(edge);
-                }
-                else  // if edge exists
-                {
-                    cwCurrentEdgeIndex = edgeMap[cwEdgeKey];
-                }
-
-                // add last edge as incedent
-                if (cwLastEdgeIndex)  // if not first iteration
-                {
-                    edges[cwCurrentEdgeIndex].cwRightEdgeIndex = cwLastEdgeIndex;
-                    edges[cwLastEdgeIndex].ccwRightEdgeIndex = cwCurrentEdgeIndex;
-                }
-
-                cwLastEdgeIndex = cwCurrentEdgeIndex;
-
-                edges[cwCurrentEdgeIndex].rightFaceIndex = faceIndex;
-
-                vertices[secondVertexIndex].edgeIndex = cwCurrentEdgeIndex;
-            }
-
-            face.edgeIndex = ccwCurrentEdgeIndex;
-            faces.push_back(face);
+            edges[edgeIndex3].startVertexIndex = vertexIndex3;
+            edges[edgeIndex3].endVertexIndex = vertexIndex1;
+            edges[edgeIndex3].faceIndex = faceIndex;
+            edges[edgeIndex3].previousIndex = edgeIndex2;
+            edges[edgeIndex3].nextIndex = edgeIndex1;
         }
+
+        // for (auto face : faces)
+        // {
+        //     U32 vertexIndex1 = edges[face.edgeIndex].startVertexIndex;
+        //     U32 vertexIndex2 = edges[edges[face.edgeIndex].nextIndex].startVertexIndex;
+        //     U32 vertexIndex3 = edges[edges[edges[face.edgeIndex].nextIndex].nextIndex].startVertexIndex;
+        //     U32 vertexIndex4 = edges[edges[edges[edges[face.edgeIndex].nextIndex].nextIndex].nextIndex].startVertexIndex;
+        //     // std::cout << vertices[vertexIndex1].position.string() << " -> " << vertices[vertexIndex2].position.string() << " -> " << vertices[vertexIndex3].position.string() << std::endl;
+        //     std::cout << vertices[vertexIndex1].position.string() << " -> " << vertices[vertexIndex4].position.string() << std::endl;
+        // }
+
+        OUT("end constructor");
     }
 
-    void load()
+    void load(bool isSmooth = true)
     {
-        renderVertices.clear();
-        renderVertices.resize(faces.size() * 3);
-        for (auto face : faces)
+        orderedVertices.clear();
+        orderedVertices.resize(faces.size() * 3);
+        OUT("start load");
+        for (Face face : faces)
         {
-            U32 firstEdgeIndex = face.edgeIndex;
-            U32 secondEdgeIndex = edges[firstEdgeIndex].ccwLeftEdgeIndex;
-            U32 thirdEdgeIndex = edges[thirdEdgeIndex].ccwLeftEdgeIndex;
+            U32 vertexIndex1 = edges[face.edgeIndex].startVertexIndex;
+            U32 vertexIndex2 = edges[edges[face.edgeIndex].nextIndex].startVertexIndex;
+            U32 vertexIndex3 = edges[edges[edges[face.edgeIndex].nextIndex].nextIndex].startVertexIndex;
 
-            Vertex vertex;
+            if (!isSmooth)
+            {
+                V3 normal = normalize(cross(
+                    vertices[vertexIndex1].position - vertices[vertexIndex2].position,
+                    vertices[vertexIndex1].position - vertices[vertexIndex3].position));
 
-            // first vertex
-            vertex = vertices[edges[firstEdgeIndex].origVertexIndex];
-            vertex.barycentric = V3(1, 0, 0);
-            renderVertices.push_back(vertex);
+                vertices[vertexIndex1].normal = normal;
+                vertices[vertexIndex2].normal = normal;
+                vertices[vertexIndex3].normal = normal;
+            }
 
-            // second vertex
-            vertex = vertices[edges[secondEdgeIndex].origVertexIndex];
-            vertex.barycentric = V3(0, 1, 0);
-            renderVertices.push_back(vertex);
+            orderedVertices.push_back(vertices[vertexIndex1]);
+            orderedVertices.back().barycentric = V3(1, 0, 0);
 
-            // third vertex
-            vertex = vertices[edges[thirdEdgeIndex].origVertexIndex];
-            vertex.barycentric = V3(0, 0, 1);
-            renderVertices.push_back(vertex);
+            orderedVertices.push_back(vertices[vertexIndex2]);
+            orderedVertices.back().barycentric = V3(0, 1, 0);
+
+            orderedVertices.push_back(vertices[vertexIndex3]);
+            orderedVertices.back().barycentric = V3(0, 0, 1);
         }
 
         // vertex array object
@@ -349,30 +352,31 @@ struct WingedEdgeMesh : Mesh
         // vertex buffer object
         glGenBuffers(1, &vertexBuffer);
         glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-        glBufferData(GL_ARRAY_BUFFER, renderVertices.size() * sizeof(Vertex), &vertices[0], GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, orderedVertices.size() * sizeof(Vertex), &orderedVertices[0], GL_STATIC_DRAW);
 
         // vertex positions
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, position));
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
 
-        // vertex bary
+        // vertex barycentrics
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, barycentric));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, barycentric));
 
         // vertex normals
         glEnableVertexAttribArray(2);
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, normal));
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
 
         // // Vertex Colors
         // glEnableVertexAttribArray(2);
         // glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, color));
+        OUT("end load");
     }
 
     void draw()
     {
         glBindVertexArray(vertexArray);
 
-        glDrawArrays(GL_TRIANGLES, 0, renderVertices.size());
+        glDrawArrays(GL_TRIANGLES, 0, orderedVertices.size());
 
         glBindVertexArray(0);
     }

@@ -28,6 +28,19 @@ const U32 SCR_HEIGHT = 768;
 const F32 DRAW_DISTANCE = 200.0f;
 V3        color = V3(0.7f, 0.3f, 0.4f);
 
+struct State
+{
+    F32  zoom = 5;
+    F32  rotationSpeed = 0.1;
+    F32  rotation = 0;
+    V3   translation = V3(0, 0, 0);
+    bool showWireframe = true;
+    bool isSmooth = false;
+    bool isFirstFrame = true;
+};
+
+static State state = State();
+
 struct Time
 {
     F32 current;
@@ -43,9 +56,9 @@ struct Time
     }
 };
 
-Time   t = Time();
-V3     cameraPosition = normalize(V3(0.0f, 1.0f, 2.0f));
-Camera camera(cameraPosition, V3(0.0f, 1.0f, 0.0f), -90.0f, -30.0f);
+static Time t = Time();
+V3          cameraPosition = normalize(V3(0.0f, 1.0f, 2.0f));
+Camera      camera(cameraPosition, V3(0.0f, 1.0f, 0.0f), -90.0f, -30.0f);
 
 void processInput(GLFWwindow *window)
 {
@@ -144,23 +157,10 @@ I32 main()
     shader.setV3("u_color", color);
 
     // load mesh
-    WingedEdgeMesh mesh = WingedEdgeMesh("./assets/torus.obj");
-    // return 1;
-    // mesh.flattenNormals();
-    mesh.load();
-    mesh.m = scale(0.1f);
+    WingedEdgeMesh mesh;
 
     // imgui: state
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
-    struct State
-    {
-        F32 zoom = 5;
-        F32 rotationSpeed = 0.25;
-        V3  translation = V3(0, 0, 0);
-    };
-
-    static State state = State();
 
     t.update(glfwGetTime());
 
@@ -176,24 +176,6 @@ I32 main()
         // clear
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // scene
-
-        mesh.m = mesh.m * rotationY(t.delta * state.rotationSpeed * 2 * PI);
-        mesh.m.translate(state.translation);
-        shader.setM4("model", mesh.m);
-
-        camera.position = cameraPosition * state.zoom;
-        M4 view = camera.getViewMatrix();
-        shader.setM4("view", view);
-
-        M4 projection = perspective(radians(camera.zoom), (F32)SCR_WIDTH / (F32)SCR_HEIGHT, 0.1f, DRAW_DISTANCE);
-        shader.setM4("projection", projection);
-
-        V3 light = normalize(V3(0.2f, -1.0f, -0.4f));
-        shader.setV3("u_light", light);
-
-        mesh.draw();
 
         // imgui: create frame
         ImGui_ImplOpenGL3_NewFrame();
@@ -213,10 +195,33 @@ I32 main()
             ImGui::SliderFloat("zoom", &state.zoom, 0.0f, 10.0f);
 
             ImGui::SliderFloat("rotation speed", &state.rotationSpeed, 0.0f, 1.0f);
+            ImGui::SliderFloat("rotate", &state.rotation, 0.0f, 1.0f);
 
             ImGui::SliderFloat("translate x", &state.translation.x, -5.0f, 5.0f);
             ImGui::SliderFloat("translate y", &state.translation.y, -5.0f, 5.0f);
             ImGui::SliderFloat("translate z", &state.translation.z, -5.0f, 5.0f);
+
+            ImGui::Checkbox("Show Wireframe", &state.showWireframe);
+            if (ImGui::Checkbox("Smooth", &state.isSmooth))
+            {
+                mesh.load(state.isSmooth);
+            }
+
+            // Simplified one-liner Combo() API, using values packed in a single constant string
+            static int  selectedModelIndex = 4;
+            const char *models[] = {
+                "torus.obj",
+                "suzanne.obj",
+                "horse.obj",
+                "bunny.obj",
+                "chess_piece.obj",
+                "tet.obj"};
+
+            if (ImGui::Combo("model", &selectedModelIndex, models, IM_ARRAYSIZE(models)) || state.isFirstFrame)
+            {
+                mesh = WingedEdgeMesh("assets/" + std::string(models[selectedModelIndex]));
+                mesh.load(state.isSmooth);
+            }
 
             if (ImGui::Button("Button"))  // Buttons return true when clicked (most widgets return true when edited/activated)
                 counter++;
@@ -227,6 +232,28 @@ I32 main()
             ImGui::End();
         }
 
+        // scene
+        state.rotation = state.rotation + state.rotationSpeed * t.delta;
+        if (1 < state.rotation) state.rotation = 0;
+        mesh.m = rotationY(state.rotation * 2 * PI);
+        mesh.m.translate(state.translation);
+
+        shader.setM4("model", mesh.m);
+
+        camera.position = cameraPosition * state.zoom;
+        M4 view = camera.getViewMatrix();
+        shader.setM4("view", view);
+
+        M4 projection = perspective(radians(camera.zoom), (F32)SCR_WIDTH / (F32)SCR_HEIGHT, 0.1f, DRAW_DISTANCE);
+        shader.setM4("projection", projection);
+
+        V3 light = normalize(V3(0.2f, -1.0f, -0.4f));
+        shader.setV3("u_light", light);
+
+        shader.setBool("uShowWireframe", state.showWireframe);
+
+        mesh.draw();
+
         // imgui: render
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -234,6 +261,8 @@ I32 main()
         // glfw: swap and poll
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        state.isFirstFrame = false;
     }
 
     // glfw: terminate, clearing all previously allocated GLFW resources.

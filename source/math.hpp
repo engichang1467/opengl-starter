@@ -155,7 +155,7 @@ struct V3_T
 
     std::string string()
     {
-        return "[" + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z) + "]";
+        return "[" + std::to_string(x).substr(0, 8) + ", " + std::to_string(y).substr(0, 8) + ", " + std::to_string(z).substr(0, 8) + "]";
     }
 };
 
