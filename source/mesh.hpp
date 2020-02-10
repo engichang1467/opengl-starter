@@ -50,10 +50,14 @@ struct Face
 
 struct Vertex
 {
-    V3  position;
-    V3  barycentric;
-    V3  normal = V3(0, 0, 0);
-    U32 edgeIndex;  // always the counter-clockwise egde
+    Vertex() {}
+    Vertex(V3 position) : position(position) {}
+
+    V3   position;
+    V3   barycentric;
+    V3   normal;
+    U32  edgeIndex;  // always the counter-clockwise egde
+    bool isNew;
 };
 
 struct Mesh : Entity
@@ -177,20 +181,30 @@ struct WingedEdgeMesh : Mesh
     std::vector<Edge>   edges;
     std::vector<Vertex> orderedVertices;  // for rendering
 
+    std::unordered_map<std::string, U32> edgeIndexMap;
+
     WingedEdgeMesh() : Mesh() {}
 
     WingedEdgeMesh(std::string path) : Mesh(path)
     {
-        std::unordered_map<std::string, U32> edgeIndexMap;
+        createWingedEdgeMesh();
+    }
+
+    void createWingedEdgeMesh()
+    {
+        faces.clear();
+        edges.clear();
+        orderedVertices.clear();
+        edgeIndexMap.clear();
 
         for (U32 faceIndex = 0; faceIndex * 3 < indices.size(); faceIndex += 1)  // for each face
         {
-            faces.push_back(Face());
-            Face* face = &faces.back();
-
             Vertex* vertex1 = &vertices[indices[faceIndex * 3 + 0]];
             Vertex* vertex2 = &vertices[indices[faceIndex * 3 + 1]];
             Vertex* vertex3 = &vertices[indices[faceIndex * 3 + 2]];
+
+            faces.push_back(Face());
+            Face* face = &faces.back();
 
             V3 normal = normalize(cross(
                 vertex1->position - vertex2->position,
@@ -253,33 +267,165 @@ struct WingedEdgeMesh : Mesh
         }
     }
 
+    void subdivide()
+    {
+        std::vector<U32>                     newIndices;
+        std::unordered_map<std::string, U32> positionIndexMap;
+
+        U32 evenVertices = vertices.size();
+
+        for (U32 faceIndex = 0; faceIndex * 3 < indices.size(); faceIndex += 1)
+        {
+            V3          position;
+            V3          oppositePosition;
+            std::string positionKey;
+
+            U32 vertexIndex1 = indices[faceIndex * 3 + 0];
+            vertices[vertexIndex1].isNew = false;
+            U32 vertexIndex2 = indices[faceIndex * 3 + 1];
+            vertices[vertexIndex2].isNew = false;
+            U32 vertexIndex3 = indices[faceIndex * 3 + 2];
+            vertices[vertexIndex3].isNew = false;
+
+            // new vertex 1
+            U32 newVertexIndex1;
+            // oppositePosition = edges[edges[edges[edgeIndexMap[vertices[vertexIndex2].position.string() + vertices[vertexIndex1].position.string()]].nextIndex].nextIndex].startVertex->position;
+            // OUT(oppositePosition.string());
+            position = vertices[vertexIndex1].position * 1 / 2 + vertices[vertexIndex2].position * 1 / 2;
+            positionKey = position.string();
+            if (positionIndexMap.count(positionKey) == 0)  // vertex does not exist
+            {
+                newVertexIndex1 = vertices.size();
+                vertices.push_back(Vertex(position));
+                vertices.back().isNew = true;
+                positionIndexMap[positionKey] = newVertexIndex1;
+            }
+            else  // vertex exists
+            {
+                newVertexIndex1 = positionIndexMap[positionKey];
+            }
+
+            // new vertex 2
+            U32 newVertexIndex2;
+            // oppositePosition = edges[edges[edges[edgeIndexMap[vertices[vertexIndex3].position.string() + vertices[vertexIndex2].position.string()]].nextIndex].nextIndex].startVertex->position;
+            // OUT(edges[edges[edges[edgeIndexMap[vertices[vertexIndex3].position.string() + vertices[vertexIndex2].position.string()]].nextIndex].nextIndex].startVertex->position.string());
+
+            OUT(oppositePosition.string());
+            position = vertices[vertexIndex2].position * 1 / 2 + vertices[vertexIndex3].position * 1 / 2;
+            positionKey = position.string();
+            if (positionIndexMap.count(positionKey) == 0)  // vertex does not exist
+            {
+                newVertexIndex2 = vertices.size();
+                vertices.push_back(Vertex(position));
+                vertices.back().isNew = true;
+                positionIndexMap[positionKey] = newVertexIndex2;
+            }
+            else  // vertex exists
+            {
+                newVertexIndex2 = positionIndexMap[positionKey];
+            }
+
+            // new vertex 3
+            U32 newVertexIndex3;
+            // oppositePosition = edges[edges[edges[edgeIndexMap[vertices[vertexIndex1].position.string() + vertices[vertexIndex3].position.string()]].nextIndex].nextIndex].startVertex->position;
+            // OUT(oppositePosition.string());
+            position = vertices[vertexIndex3].position * 1 / 2 + vertices[vertexIndex1].position * 1 / 2;
+            positionKey = position.string();
+            if (positionIndexMap.count(positionKey) == 0)  // vertex does not exist
+            {
+                newVertexIndex3 = vertices.size();
+                vertices.push_back(Vertex(position));
+                vertices.back().isNew = true;
+                positionIndexMap[positionKey] = newVertexIndex3;
+            }
+            else  // vertex exists
+            {
+                newVertexIndex3 = positionIndexMap[positionKey];
+            }
+
+            // new face 1
+            newIndices.push_back(vertexIndex1);
+            newIndices.push_back(newVertexIndex1);
+            newIndices.push_back(newVertexIndex3);
+
+            // new face 2
+            newIndices.push_back(vertexIndex2);
+            newIndices.push_back(newVertexIndex2);
+            newIndices.push_back(newVertexIndex1);
+
+            // new face 3
+            newIndices.push_back(vertexIndex3);
+            newIndices.push_back(newVertexIndex3);
+            newIndices.push_back(newVertexIndex2);
+
+            // new face 4 (center)
+            newIndices.push_back(newVertexIndex1);
+            newIndices.push_back(newVertexIndex2);
+            newIndices.push_back(newVertexIndex3);
+        }
+
+        indices.clear();
+
+        indices = newIndices;
+
+        createWingedEdgeMesh();
+
+        // for all odd vertices (new)
+        for (U32 vertexIndex = evenVertices; vertexIndex < vertices.size(); vertexIndex += 1)
+        {
+        }
+
+        // for all even vertices (old)
+        for (U32 vertexIndex = 0; vertexIndex < evenVertices; vertexIndex += 1)
+        {
+        }
+    }
+
     void load(bool isSmooth = true)
     {
         orderedVertices.clear();
         orderedVertices.resize(faces.size() * 3);
         OUT("start load");
-        for (Face face : faces)
+
+        for (U32 faceIndex = 0; faceIndex * 3 < indices.size(); faceIndex += 1)
         {
-            orderedVertices.push_back(*edges[face.edgeIndex].startVertex);
-            Vertex* vertex1 = &orderedVertices.back();
+            Vertex* vertex;
 
-            orderedVertices.push_back(*edges[edges[face.edgeIndex].nextIndex].startVertex);
-            Vertex* vertex2 = &orderedVertices.back();
+            // vertex 1
+            orderedVertices.push_back(Vertex());
+            vertex = &orderedVertices.back();
+            vertex->position = vertices[indices[faceIndex * 3 + 0]].position;
+            vertex->barycentric = V3(1, 0, 0);
+            if (isSmooth)
+                vertex->normal = vertices[indices[faceIndex * 3 + 0]].normal;
+            else
+                vertex->normal = faces[faceIndex].normal;
 
-            orderedVertices.push_back(*edges[edges[edges[face.edgeIndex].nextIndex].nextIndex].startVertex);
-            Vertex* vertex3 = &orderedVertices.back();
+            // vertex 2
+            orderedVertices.push_back(Vertex());
+            vertex = &orderedVertices.back();
+            vertex->position = vertices[indices[faceIndex * 3 + 1]].position;
+            vertex->barycentric = V3(0, 1, 0);
+            if (isSmooth)
+                vertex->normal = vertices[indices[faceIndex * 3 + 1]].normal;
+            else
+                vertex->normal = faces[faceIndex].normal;
 
-            if (!isSmooth)
-            {
-                vertex1->normal = face.normal;
-                vertex2->normal = face.normal;
-                vertex3->normal = face.normal;
-            }
-
-            vertex1->barycentric = V3(1, 0, 0);
-            vertex2->barycentric = V3(0, 1, 0);
-            vertex3->barycentric = V3(0, 0, 1);
+            // vertex 3
+            orderedVertices.push_back(Vertex());
+            vertex = &orderedVertices.back();
+            vertex->position = vertices[indices[faceIndex * 3 + 2]].position;
+            vertex->barycentric = V3(0, 0, 1);
+            if (isSmooth)
+                vertex->normal = vertices[indices[faceIndex * 3 + 2]].normal;
+            else
+                vertex->normal = faces[faceIndex].normal;
         }
+
+        OUT("vertices        " + std::to_string(vertices.size()))
+        OUT("orderedVertices " + std::to_string(orderedVertices.size()))
+        OUT("indices         " + std::to_string(indices.size()))
+        OUT("faces           " + std::to_string(faces.size()))
 
         // vertex array object
         glGenVertexArrays(1, &vertexArray);

@@ -64,6 +64,9 @@
         "mutex": "cpp",
         "thread": "cpp",
         "typeindex": "cpp",
-        "valarray": "cpp"
+        "valarray": "cpp",
+        "core": "cpp",
+        "fft": "cpp",
+        "matrixfunctions": "cpp"
     }
 }
