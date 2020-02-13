@@ -1,6 +1,5 @@
 #pragma once
 
-#include <vector>
 #include "math.hpp"
 #include "types.hpp"
 

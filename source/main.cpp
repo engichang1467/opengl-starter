@@ -1,9 +1,6 @@
 #include <iostream>
 #define OUT(X) std::cout << X << std::endl;
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
 // glad before glfw
 #include <glad/glad.h>
 
@@ -16,9 +13,9 @@
 #include "types.hpp"
 
 // imgui
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
 
 #include <stdio.h>
 
@@ -183,9 +180,7 @@ I32 main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::Begin("Hello, world!");  // Create a window called "Hello, world!" and append into it.
-
-        ImGui::Text("This is some useful text.");  // Display some text (you can use a format strings too)
+        ImGui::Begin("Assignment 1");
 
         ImGui::SliderFloat("zoom", &state.zoom, 0.0f, 10.0f);
 
@@ -202,10 +197,7 @@ I32 main()
             mesh.load(state.isSmooth);
         }
 
-        // Simplified one-liner Combo() API, using values packed in a single constant string
         const char *models[] = {
-            "torus.obj",
-            "suzanne.obj",
             "horse.obj",
             "horse_s.obj",
             "venus.obj",
@@ -261,8 +253,6 @@ I32 main()
         state.isFirstFrame = false;
     }
 
-    // glfw: terminate, clearing all previously allocated GLFW resources.
-    // ------------------------------------------------------------------
     glfwTerminate();
     return 0;
 }

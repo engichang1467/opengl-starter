@@ -4,18 +4,11 @@
 #include "math.hpp"
 #include "types.hpp"
 
-#define TINYOBJLOADER_IMPLEMENTATION
-#include "tiny_obj_loader.h"
-
 #include <glad/glad.h>
-
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 
 #include <math.h>
 #include <fstream>
 #include <iostream>
-#include <random>
 #include <sstream>
 #include <string>
 #include <unordered_map>
