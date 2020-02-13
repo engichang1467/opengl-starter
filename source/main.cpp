@@ -207,7 +207,9 @@ I32 main()
             "torus.obj",
             "suzanne.obj",
             "horse.obj",
-            "bunny.obj",
+            "horse_s.obj",
+            "venus.obj",
+            "wheel.obj",
             "chess_piece.obj",
             "tet.obj"};
 

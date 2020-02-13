@@ -147,6 +147,10 @@ struct V3_T
     {
         return V3_T<T>(x / n, y / n, z / n);
     }
+    bool operator==(V3_T<T> v)
+    {
+        return x == v.x && y == v.y && z == v.z;
+    }
 
     T* front()
     {

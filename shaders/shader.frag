@@ -1,5 +1,7 @@
 #version 330 core
 
+#extension GL_OES_standard_derivatives : enable
+
 in vec3 vertColor;
 in vec3 vertBarycentric;
 
@@ -8,7 +10,6 @@ out vec4 fragColor;
 uniform bool showWireframe;
 
 // anit-aliasing
-#extension GL_OES_standard_derivatives : enable
 float edgeFactor()
 {
     vec3 d = fwidth(vertBarycentric);
